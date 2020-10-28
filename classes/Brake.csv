@@ -1,0 +1,6 @@
+brake_id,brake,braking_torque,disc_diameter,disc_thickness,pad_surface_area,pad_thickness,weight,rim_size,max_actuator_size,brand,disc_inner_diameter
+1,Maxx17,12000.0,330.0,34.0,245.0,17.0,23.0,17.5,20,Wabco,
+2,Maxx19,20000.0,375.0,45.0,291.0,21.0,33.0,19.5,24,Wabco,
+3,Maxx22T,21000.0,430.0,45.0,340.0,23.0,32.0,22.5,22,Wabco,
+4,Maxxus,23000.0,430.0,45.0,340.0,21.0,37.0,22.5,24,Wabco,
+5,Maxx22,30000.0,432.0,45.0,355.0,22.0,39.0,22.5,30,Wabco,
