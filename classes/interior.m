@@ -113,7 +113,7 @@ classdef interior
                        wheelbase=Vehicle.Body.wheelbase;
                   frontoverhang=400+obj.doorwidth+1.5*wheeldiameter/2;
                   rearoverhang=vehiclelength-frontoverhang-wheelbase;
-                    seatarea1_length=(interiorwidth-tgap); % calculate numseat at the front, back
+                    seatarea1_length=(interiorwidth-tgap); % calculate numseat at the back
                     numseats1=floor(seatarea1_length/(seatwidth+2*seatgap));
                     seatarea2_length=wheelbase/2+rearoverhang-obj.doorwidth/2;
                      seatarea2_length= seatarea2_length-(seatpitch-seatlength); % number of seats in the rear left
