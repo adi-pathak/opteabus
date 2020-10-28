@@ -191,7 +191,7 @@ classdef vehicleconcept
             % constraint 1 - battery capacity should be less than max
             % battery
             if Vehicle.Battery.maxcapacity<=Vehicle.Battery.capacity
-                flag=0;
+                flag=-1;
                 disp('battery too big')
                 return
             
