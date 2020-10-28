@@ -103,7 +103,7 @@ classdef interior
                     obj.passengercapacity= standingpassengers+numseats;
                     obj.standingpassengers= standingpassengers;
                     obj.seatingratio=obj.numberseats./obj.passengercapacity;
-                    obj.costs=obj.numberseats*264;
+                    obj.costs=obj.numberseats*265;
                     obj.mass=obj.numberseats*15;
                      else
                         %
