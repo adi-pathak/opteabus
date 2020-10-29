@@ -106,7 +106,6 @@ classdef chassis
                     obj.FA.maxSteering = 55;
                     obj.FA.mass = 527;
                 end
-                
             elseif strcmp(type, 'TA')
                 if load < 7500
                     obj.TA.name = 'RL 75 A';
@@ -119,7 +118,6 @@ classdef chassis
                     obj.TA.maxSteering = 55;
                     obj.TA.mass = 527;
                 end
-                
             else
                 if load < 5800
                     obj.RA.name = 'RL 55 EC';
@@ -141,7 +139,6 @@ classdef chassis
                     obj.RA.RearWheelSteering = 1;
                 elseif load < 8200
                 end
-                
             end
         end
         function obj=axlecosts(obj,axleload)
