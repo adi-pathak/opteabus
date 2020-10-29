@@ -18,6 +18,8 @@ classdef interior
         floorheight=370;
         interiorlength
         interiorwidth
+        frontcrashlength=450;
+        rearcrashlength=450;
     end
     properties (Access=private)
         passengermass=65;
@@ -157,7 +159,7 @@ classdef interior
             elseif obj.interiorlayout==2 % Urban Layout 1
                 
                 vehiclelength=Vehicle.Body.length;
-                interiorlength=vehiclelength-300-300; % reduce interior length for front and rear zones
+                interiorlength=vehiclelength-obj.frontcrashlength-obj.rearcrashlength; % reduce interior length for front and rear zones
                 obj.interiorlength=interiorlength;
              
                 seatpitch=obj.seatpitch;
@@ -180,7 +182,7 @@ classdef interior
                     seatarea3_length=(interiorlength-2*(tgap))-2*(seatlength+legroom); % calculate numseats at side
                     numseats3=floor(seatarea3_length/(seatwidth+2*seatgap));
                     seatarea4_length=(seatarea3_length-(doorwidth+200))/2;
-                    numseats4=floor(seatarea4_length/(seatwidth+2*seatgap));
+                    numseats4=floor(seatarea4_length/(seatwidth+2*seatgap))*(seatarea4_length>0);
                     if wheelchairs==0
                         numseats5=numseats4;
                     else
@@ -219,7 +221,7 @@ classdef interior
         end
         function plotinterior1(obj,Vehicle,handle) %coach layout
                 vehiclelength=Vehicle.Body.length;
-                interiorlength=vehiclelength-300-300; % reduce interior length for front and rear zones
+                 interiorlength=vehiclelength-obj.frontcrashlength-obj.rearcrashlength; % reduce interior length for front and rear zones
                 obj.interiorlength=interiorlength;
                 seatpitch=obj.seatpitch;
                 seatwidth=obj.seatwidth;

@@ -929,7 +929,7 @@ classdef chassis
             airspringplot(obj,springpos,handle);
            airtankplot(obj,[airspringpositionyfront airspringpositionyright 0],handle);
             position=[-wheelbase/2 -(vehiclewidth-width)/2 (outerdiameter/2-groundclearance)];
-            obj.tireplot(position,width,outerdiameter,innerdiameter,handle)
+            obj.tireplot(position,width,outerdiameter,innerdiameter,handle);
             springpos=[-wheelbase/2 springpositionyr springpositionz];
             airspringplot(obj,springpos,handle);
             airtankplot(obj,[airspringpositionyback airspringpositionyright 0],handle);

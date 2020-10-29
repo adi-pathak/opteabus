@@ -257,7 +257,6 @@ classdef body
             colr = [1 1 1];
             alph = 0.5;
             length = 1.5*wheeldiameter;
-            springdiameter=300
             %% roof
             % side right surface
             n=10; % points in the fillet radi
@@ -598,12 +597,12 @@ classdef body
             floor=[[facel(1:2,1);floor(3,1)],floor,[facer(1:2,1);floor(3,1)]];
             leftwall=patch(handle,'Faces', [1:32],'Vertices', facel','FaceColor', colr);
             rightwall=patch(handle,'Faces', [1:32],'Vertices', facer','FaceColor', colr);
-            roofpatch=patch(handle,'Faces', facerf,'Vertices', roof','FaceColor', colr,'LineStyle','none')
+            roofpatch=patch(handle,'Faces', facerf,'Vertices', roof','FaceColor', colr,'LineStyle','none');
             bottom=patch(handle,'Faces', facebt,'Vertices', bot','FaceColor', colr,'LineStyle','none');
             floor=patch(handle,'Faces', [1:22],'Vertices', floor','FaceColor', colr);
             colr=[0 0 1];
             alph=0.2;
-            windShield=patch(handle,'Faces', facews,'Vertices', ws','FaceColor', colr,'FaceAlpha',alph,'LineStyle','none')
+            windShield=patch(handle,'Faces', facews,'Vertices', ws','FaceColor', colr,'FaceAlpha',alph,'LineStyle','none');
             
             
             
@@ -854,7 +853,7 @@ classdef body
             bot4Vertices=obj.translate(bot4Vertices,position);
             bot5Vertices=obj.translate(bot5Vertices,position);
             
-            floor=patch(handle,'Faces', floorfaces,'Vertices', floorVertices','FaceColor', colr) %,'FaceAlpha',alph)
+            floor=patch(handle,'Faces', floorfaces,'Vertices', floorVertices','FaceColor', colr); %,'FaceAlpha',alph)
             %bucket=patch('Faces', bottomfaces,'Vertices', bottomVertices','FaceColor', colr) %,'FaceAlpha',alph)
             %roof=patch('Faces', rooffaces,'Vertices', roofVertices','FaceColor', colr) %,'FaceAlpha',alph)
             patch(handle,'Faces', [1:4],'Vertices', rf1Vertices','FaceColor', colr);
