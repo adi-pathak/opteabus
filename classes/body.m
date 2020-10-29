@@ -15,11 +15,14 @@ classdef body
         frontoverhang
         rearoverhang
         doorwidth=1250;
-        sectionheight=100;
+        sectionheight=100; %100 mm square section
+        sectionwidth=100; %square section for ladder frame;
+        sectionthickness=4; % 4mm thickness
     end
     properties (Access=private)
         aluminiumrawprice=3.5; %material costs
         structure_materialutilisation=0.52; %production cost Fuchs
+        
     end
     methods
         
@@ -205,12 +208,12 @@ classdef body
         function plotstucture_frame(obj,handle,position,vehiclelength)
 %             position =[0 0 0];
              length=vehiclelength;
-            width= 100;
-            height = 100;
+            width= obj.sectionheight;
+            height = obj.sectionwidth;
             position(3)=position(3)+height/2+5;
             position(2)=((position(2)>0)* (position(2)-width/2))+...
                 ((position(2)<0)* (position(2)+width/2));
-            thickness=3;
+            thickness=obj.sectionthickness;
             orient=[0 0 0];
             colr = [.8 .8 .8];
             alph = 1;

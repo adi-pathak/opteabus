@@ -51,7 +51,7 @@ classdef chassis
             
             % Third axle selection (if applicable)
             if obj.numberofaxles==3
-                obj=obj.ZFchassis('TA',Basisfahrzeug.chassis.AxleLoad);
+                obj=obj.ZFchassis('TA',AxleLoad);
                 
                 obj.mass= obj.TA.mass + obj.FA.mass + obj.RA.mass;
             else
@@ -94,15 +94,18 @@ classdef chassis
                     %                     obj.FA.maxSteering = 0;
                     %                     obj.FA.mass = 790;
                     %                     obj.FA.RearWheelSteering = 0;
-                    
+                elseif load < 8500
+                    obj.RA.name = 'RL 82 EC';
+                    obj.RA.maxLoad = 8200;
+                    obj.RA.maxSteering = 56;
+                    obj.RA.mass = 482;
+                    obj.RA.RearWheelSteering = 1;  
                 else
                     obj.FA.name = 'RL 82 A';
                     obj.FA.maxLoad = 8200;
                     obj.FA.maxSteering = 55;
                     obj.FA.mass = 527;
                 end
-                
-                
                 
             elseif strcmp(type, 'TA')
                 if load < 7500
