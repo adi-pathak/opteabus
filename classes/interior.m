@@ -55,16 +55,16 @@ classdef interior
                 else
                     obj.numberofdoors=1;
                 end
-                         
+                
             end
             [obj]=updateinterior(obj,Vehicle);
             obj.loadedmass=obj.passengermass*obj.passengercapacity;
         end
         function [obj]=updateinterior(obj,Vehicle)
-%                      
+            %
             if obj.interiorlayout==1 % coach layout
                 vehiclelength=Vehicle.Body.length;
-                interiorlength=vehiclelength-300-300; % reduce interior length for front and rear zones
+                interiorlength=vehiclelength-obj.frontcrashlength-obj.rearcrashlength; % reduce interior length for front and rear zones
                 obj.interiorlength=interiorlength;
                 seatpitch=obj.seatpitch;
                 seatwidth=obj.seatwidth;
@@ -83,57 +83,53 @@ classdef interior
                     numseats1=floor(seatarea1_length/(seatwidth+2*seatgap));
                     %numseats2=numseats1;
                     legroom=seatpitch-seatlength;
-                   
-                   
                     if wheelchairs==0
-                          seatarea2_length=(interiorlength-2*(tgap))-(seatpitch); % calculate numseats at side
-                          numseats2=2*floor(seatarea2_length/(seatpitch));
-                   
-                    seatarea3_length=(interiorlength-2*(tgap)-doorwidth)/2-(seatpitch); % calculate numseats behind door
-                    numseats3=2*floor(seatarea3_length/(seatpitch));
-                    seatarea4_length=(interiorlength-2*(tgap)-doorwidth)/2;%
-                    numseats4=2*floor(seatarea4_length/(seatpitch));
-                    numseats=numseats1+numseats2+numseats3+numseats4;
-                    % calculate standing space
-                    aislewidth=interiorwidth-4*(seatwidth+seatgap);
-                    standingarea= ((seatarea2_length-150) *aislewidth)/(1000^2);
-                    standingpassengers=floor(standingarea/passengerdensity);
-                    standingarea2=doorwidth*((interiorwidth-aislewidth-2*(seatwidth+seatgap)))/(1000^2);
-                    standingpassengers2=floor(standingarea2/passengerdensity);
-                    standingpassengers=standingpassengers+standingpassengers2;
-                    obj.numberseats=numseats;
-                    obj.passengercapacity= standingpassengers+numseats;
-                    obj.standingpassengers= standingpassengers;
-                    obj.seatingratio=obj.numberseats./obj.passengercapacity;
-                    obj.costs=obj.numberseats*265;
-                    obj.mass=obj.numberseats*15;
-                     else
+                        seatarea2_length=(interiorlength-2*(tgap))-(seatpitch); % calculate numseats at side
+                        numseats2=2*floor(seatarea2_length/(seatpitch));
+                        seatarea3_length=(interiorlength-2*(tgap)-doorwidth)/2-(seatpitch); % calculate numseats behind door
+                        numseats3=2*floor(seatarea3_length/(seatpitch));
+                        seatarea4_length=(interiorlength-2*(tgap)-doorwidth)/2;%
+                        numseats4=2*floor(seatarea4_length/(seatpitch));
+                        numseats=numseats1+numseats2+numseats3+numseats4;
+                        % calculate standing space
+                        aislewidth=interiorwidth-4*(seatwidth+seatgap);
+                        standingarea= ((seatarea2_length-150) *aislewidth)/(1000^2);
+                        standingpassengers=floor(standingarea/passengerdensity);
+                        standingarea2=doorwidth*((interiorwidth-aislewidth-2*(seatwidth+seatgap)))/(1000^2);
+                        standingpassengers2=floor(standingarea2/passengerdensity);
+                        standingpassengers=standingpassengers+standingpassengers2;
+                        obj.numberseats=numseats;
+                        obj.passengercapacity= standingpassengers+numseats;
+                        obj.standingpassengers= standingpassengers;
+                        obj.seatingratio=obj.numberseats./obj.passengercapacity;
+                        obj.costs=obj.numberseats*265;
+                        obj.mass=obj.numberseats*15;
+                    else
                         %
                     end
                 else
-                       wheeldiameter=900; % initial estimate to calculate overhangs
-                       wheelbase=Vehicle.Body.wheelbase;
-                  frontoverhang=400+obj.doorwidth+1.5*wheeldiameter/2;
-                  rearoverhang=vehiclelength-frontoverhang-wheelbase;
+                    wheeldiameter=900; % initial estimate to calculate overhangs
+                    wheelbase=Vehicle.Body.wheelbase;
+                    frontoverhang=400+obj.doorwidth+1.5*wheeldiameter/2;
+                    rearoverhang=vehiclelength-frontoverhang-wheelbase;
                     seatarea1_length=(interiorwidth-tgap); % calculate numseat at the front, back
                     numseats1=floor(seatarea1_length/(seatwidth+2*seatgap));
                     seatarea2_length=wheelbase/2+rearoverhang-obj.doorwidth/2;
-                     seatarea2_length= seatarea2_length-(seatpitch-seatlength); % number of seats in the rear left
-                     numseats2=floor(seatarea2_length/(seatpitch+seatlength/2))*2; % 2 seats/row
-                     
-                     numseats3=numseats2; % on thre r side
-                     seatarea4_length=wheelbase/2+frontoverhang-obj.doorwidth/2-...
-                         (obj.wheelchairzonelength-obj.doorwidth);
-                     numseats4=floor(seatarea4_length/(seatpitch+seatlength/2))*2; % front seats
-                     if obj.wheelchairzones<2
-                    seatarea5_length=wheelbase/2+wheeldiameter/2;
-                    numseats5=floor(seatarea5_length/(seatpitch+seatlength/2))*2; % front seats
-                    numseats=numseats1+numseats2+numseats3+numseats4+numseats5;
-                     end
-                     % calculate standing passengers
-                   passengerdensity=1/4;% 4p/m^2
-                   aislelength=interiorlength-(seatpitch+seatlength);
-                   aislewidth=(interiorwidth-4*(seatwidth+seatgap));
+                    seatarea2_length= seatarea2_length-(seatpitch-seatlength); % number of seats in the rear left
+                    numseats2=floor(seatarea2_length/(seatpitch+seatlength/2))*2; % 2 seats/row
+                    numseats3=numseats2; % on thre r side
+                    seatarea4_length=wheelbase/2+frontoverhang-obj.doorwidth/2-...
+                        (obj.wheelchairzonelength-obj.doorwidth);
+                    numseats4=floor(seatarea4_length/(seatpitch+seatlength/2))*2; % front seats
+                    if obj.wheelchairzones<2
+                        seatarea5_length=wheelbase/2+wheeldiameter/2;
+                        numseats5=floor(seatarea5_length/(seatpitch+seatlength/2))*2; % front seats
+                        numseats=numseats1+numseats2+numseats3+numseats4+numseats5;
+                    end
+                    % calculate standing passengers
+                    passengerdensity=1/4;% 4p/m^2
+                    aislelength=interiorlength-(seatpitch+seatlength);
+                    aislewidth=(interiorwidth-4*(seatwidth+seatgap));
                     standingarea= aislelength *aislewidth/(1000^2);
                     standingpassengers=floor(standingarea/passengerdensity); %aisle
                     standingarea2=doorwidth*(interiorwidth-aislewidth)/(1000^2); % rear door standing
@@ -143,17 +139,17 @@ classdef interior
                     standingpassengers=standingpassengers+standingpassengers2+standingpassengers3;
                     obj.passengercapacity= standingpassengers+numseats;
                     obj.numberseats=numseats;
-                      obj.standingpassengers= standingpassengers;
+                    obj.standingpassengers= standingpassengers;
                     obj.seatingratio=obj.numberseats./obj.passengercapacity;
                     obj.costs=obj.numberseats*264;
                     obj.mass=obj.numberseats*15;
-                end    
-              
-               
-           obj.seatingratio=obj.numberseats./obj.passengercapacity;
-            obj.costs=obj.numberseats*264; %derive better interior cost model
-            obj.mass=obj.numberseats*15; % weight of seats - derive better weight model
-           
+                end
+                
+                
+                obj.seatingratio=obj.numberseats./obj.passengercapacity;
+                obj.costs=obj.numberseats*264; %derive better interior cost model
+                obj.mass=obj.numberseats*15; % weight of seats - derive better weight model
+                
                 
                 
             elseif obj.interiorlayout==2 % Urban Layout 1
@@ -161,7 +157,7 @@ classdef interior
                 vehiclelength=Vehicle.Body.length;
                 interiorlength=vehiclelength-obj.frontcrashlength-obj.rearcrashlength; % reduce interior length for front and rear zones
                 obj.interiorlength=interiorlength;
-             
+                
                 seatpitch=obj.seatpitch;
                 seatwidth=obj.seatwidth;
                 seatlength=obj.seatlength;
@@ -203,115 +199,115 @@ classdef interior
                     obj.mass=obj.numberseats*15;
                 else
                     
-                end    
-              
                 end
-           obj.seatingratio=obj.numberseats./obj.passengercapacity;
+                
+            end
+            obj.seatingratio=obj.numberseats./obj.passengercapacity;
             obj.costs=obj.numberseats*264; %derive better interior cost model
             obj.mass=obj.numberseats*15; % weight of seats - derive better weight model
         end
-      
+        
         function plotinterior(obj,Vehicle,handle)
-             if obj.interiorlayout==1 % coach layout
-                 plotinterior1(obj,Vehicle,handle);
-             elseif obj.interiorlayout==2
-                 plotinterior2(obj,Vehicle,handle);
-                 
-             end
+            if obj.interiorlayout==1 % coach layout
+                plotinterior1(obj,Vehicle,handle);
+            elseif obj.interiorlayout==2
+                plotinterior2(obj,Vehicle,handle);
+                
+            end
         end
         function plotinterior1(obj,Vehicle,handle) %coach layout
-                vehiclelength=Vehicle.Body.length;
-                 interiorlength=vehiclelength-obj.frontcrashlength-obj.rearcrashlength; % reduce interior length for front and rear zones
-                obj.interiorlength=interiorlength;
-                seatpitch=obj.seatpitch;
-                seatwidth=obj.seatwidth;
-                seatlength=obj.seatlength;
-                vehiclewidth=Vehicle.Body.width;
-                interiorwidth=vehiclewidth-200;
-                obj.interiorwidth=interiorwidth;
-                seatgap=obj.w_seat_gap;
-                tgap=obj.t_body;
-                doorwidth=obj.doorwidth;
-                wheelchairs=0;
-                doors=obj.numberofdoors;
-                passengerdensity=1/4;% 4p/m^2
-                if doors==1
-                    seatarea1_length=(interiorwidth-tgap); % calculate numseat at the front, back
-                    numseats1=floor(seatarea1_length/(seatwidth+2*seatgap));
-                    legroom=seatpitch-seatlength;
-                    xback=-0.5*interiorlength+50+seatlength/2;
-                    y=linspace(-seatarea1_length/2+50+seatwidth/2,seatarea1_length/2-50-seatwidth/2,numseats1);
+            vehiclelength=Vehicle.Body.length;
+            interiorlength=vehiclelength-obj.frontcrashlength-obj.rearcrashlength; % reduce interior length for front and rear zones
+            obj.interiorlength=interiorlength;
+            seatpitch=obj.seatpitch;
+            seatwidth=obj.seatwidth;
+            seatlength=obj.seatlength;
+            vehiclewidth=Vehicle.Body.width;
+            interiorwidth=vehiclewidth-200;
+            obj.interiorwidth=interiorwidth;
+            seatgap=obj.w_seat_gap;
+            tgap=obj.t_body;
+            doorwidth=obj.doorwidth;
+            wheelchairs=0;
+            doors=obj.numberofdoors;
+            passengerdensity=1/4;% 4p/m^2
+            if doors==1
+                seatarea1_length=(interiorwidth-tgap); % calculate numseat at the front, back
+                numseats1=floor(seatarea1_length/(seatwidth+2*seatgap));
+                legroom=seatpitch-seatlength;
+                xback=-0.5*interiorlength+50+seatlength/2;
+                y=linspace(-seatarea1_length/2+50+seatwidth/2,seatarea1_length/2-50-seatwidth/2,numseats1);
+                z=obj.seatheight+obj.floorheight;
+                orientback=[0 0 0];
+                for i=1:numseats1
+                    position=[xback y(i) z];
+                    obj.plotseats(position,orientback,obj.seatwidth,obj.seatlength,obj.backrestheight,handle)
+                end
+                
+                if wheelchairs==0
+                    seatarea2_length=(interiorlength-2*(tgap))-(seatpitch); % calculate numseats at side
+                    numseats2=2*(floor(seatarea2_length/(seatpitch)));
+                    x=ones(1,numseats2/2)*seatpitch; % seat centre pattern
+                    x(1)=xback+seatpitch;
+                    x=cumsum(x); % linear pattern
+                    y=-(interiorwidth/2-seatwidth/2);
+                    y1=y+seatwidth+seatgap;
                     z=obj.seatheight+obj.floorheight;
-                    orientback=[0 0 0];
-                    for i=1:numseats1
-                        position=[xback y(i) z];
-                        obj.plotseats(position,orientback,obj.seatwidth,obj.seatlength,obj.backrestheight,handle)
-                    end
-                    
-                    if wheelchairs==0
-                        seatarea2_length=(interiorlength-2*(tgap))-(seatpitch); % calculate numseats at side
-                        numseats2=2*(floor(seatarea2_length/(seatpitch)));
-                         x=ones(1,numseats2/2)*seatpitch; % seat centre pattern
-                         x(1)=xback+seatpitch;
-                         x=cumsum(x); % linear pattern
-                         y=-(interiorwidth/2-seatwidth/2);
-                         y1=y+seatwidth+seatgap;
-                         z=obj.seatheight+obj.floorheight;
-                         for i=1:numseats2/2
+                    for i=1:numseats2/2
                         position=[x(i) y z];
                         obj.plotseats(position,orientback,obj.seatwidth,obj.seatlength,obj.backrestheight,handle)
                         position=[x(i) y1 z];
                         obj.plotseats(position,orientback,obj.seatwidth,obj.seatlength,obj.backrestheight,handle);
-                        end
-                        seatarea3_length=(interiorlength-2*(tgap)-doorwidth)/2-(seatpitch); % calculate numseats behind door
-                        numseats3=2*floor(seatarea3_length/(seatpitch));
-                        
-                         x1=ones(1,numseats3/2)*seatpitch;
-                         x1(1)=x(1);
-                         x1=cumsum(x1); % linear pattern
-                         y=(interiorwidth/2-seatwidth/2);
-                         y1=y-seatwidth-seatgap;
-                         z=obj.seatheight+obj.floorheight;
-                        for i=1:numseats3/2
+                    end
+                    seatarea3_length=(interiorlength-2*(tgap)-doorwidth)/2-(seatpitch); % calculate numseats behind door
+                    numseats3=2*floor(seatarea3_length/(seatpitch));
+                    
+                    x1=ones(1,numseats3/2)*seatpitch;
+                    x1(1)=x(1);
+                    x1=cumsum(x1); % linear pattern
+                    y=(interiorwidth/2-seatwidth/2);
+                    y1=y-seatwidth-seatgap;
+                    z=obj.seatheight+obj.floorheight;
+                    for i=1:numseats3/2
                         position=[x1(i) y z];
                         obj.plotseats(position,orientback,obj.seatwidth,obj.seatlength,obj.backrestheight,handle)
                         position=[x1(i) y1 z];
                         obj.plotseats(position,orientback,obj.seatwidth,obj.seatlength,obj.backrestheight,handle);
-                        end
-                        
-                        seatarea4_length=(interiorlength-2*(tgap)-doorwidth)/2;%
-                        numseats4=2*floor(seatarea4_length/(seatpitch));
-                         x=ones(1,numseats4/2)*seatpitch;
-                         x(1)=doorwidth/2+seatlength;
-                         x=cumsum(x); % linear pattern
-                         y=(interiorwidth/2-seatwidth/2);
-                         y1=y-seatwidth-seatgap;
-                         z=obj.seatheight+obj.floorheight;
-                        for i=1:numseats4/2
+                    end
+                    
+                    seatarea4_length=(interiorlength-2*(tgap)-doorwidth)/2;%
+                    numseats4=2*floor(seatarea4_length/(seatpitch));
+                    x=ones(1,numseats4/2)*seatpitch;
+                    x(1)=doorwidth/2+seatlength;
+                    x=cumsum(x); % linear pattern
+                    y=(interiorwidth/2-seatwidth/2);
+                    y1=y-seatwidth-seatgap;
+                    z=obj.seatheight+obj.floorheight;
+                    for i=1:numseats4/2
                         position=[x(i) y z];
                         obj.plotseats(position,orientback,obj.seatwidth,obj.seatlength,obj.backrestheight,handle)
                         position=[x(i) y1 z];
                         obj.plotseats(position,orientback,obj.seatwidth,obj.seatlength,obj.backrestheight,handle);
-                        end
-                        numseats=numseats1+numseats2+numseats3+numseats4;
-                        % calculate standing space
-                        aislewidth=interiorwidth-4*(seatwidth+seatgap);
-                        standingarea= ((seatarea2_length-150) *aislewidth)/(1000^2);
-                        standingpassengers=floor(standingarea/passengerdensity);
-                        standingarea2=doorwidth*((interiorwidth-aislewidth)/2)/(1000^2);
-                        standingpassengers2=floor(standingarea2/passengerdensity);
-                        standingpassengers=standingpassengers+standingpassengers2;
-                        obj.numberseats=numseats;
-                        obj.passengercapacity= standingpassengers+numseats;
-                        obj.standingpassengers= standingpassengers;
-                        obj.seatingratio=obj.numberseats./obj.passengercapacity;
-                        obj.costs=obj.numberseats*264;
-                        obj.mass=obj.numberseats*15;
-                    else
-                        %
                     end
+                    numseats=numseats1+numseats2+numseats3+numseats4;
+                    % calculate standing space
+                    aislewidth=interiorwidth-4*(seatwidth+seatgap);
+                    standingarea= ((seatarea2_length-150) *aislewidth)/(1000^2);
+                    standingpassengers=floor(standingarea/passengerdensity);
+                    standingarea2=doorwidth*((interiorwidth-aislewidth)/2)/(1000^2);
+                    standingpassengers2=floor(standingarea2/passengerdensity);
+                    standingpassengers=standingpassengers+standingpassengers2;
+                    obj.numberseats=numseats;
+                    obj.passengercapacity= standingpassengers+numseats;
+                    obj.standingpassengers= standingpassengers;
+                    obj.seatingratio=obj.numberseats./obj.passengercapacity;
+                    obj.costs=obj.numberseats*264;
+                    obj.mass=obj.numberseats*15;
                 else
-                end     
+                    %
+                end
+            else
+            end
             
         end
         function plotinterior2(obj,Vehicle,handle)
@@ -332,11 +328,11 @@ classdef interior
             doors=1;
             passengerdensity=1/4;% 4p/m^2
             floorheight=obj.floorheight;
-            legroom=350;%obj.legroom;
+            legroom=400;%obj.legroom;legroom=seatpitch-seatlength;
             if doors==1
-                seatarea1_length=(interiorwidth-tgap); % calculate numseat at the front, back
-                numseats1=floor(seatarea1_length/(seatwidth+2*seatgap));
-                xback=-0.5*interiorlength+50+seatlength/2;
+                 seatarea1_length=(interiorwidth-tgap); % calculate numseat at the front, back
+                    numseats1=floor(seatarea1_length/(seatwidth+2*seatgap));
+               xback=-0.5*interiorlength+50+seatlength/2;
                 xfront=0.5*interiorlength-50-seatlength/2;
                 y=linspace(-seatarea1_length/2+50+seatwidth/2,seatarea1_length/2-50-seatwidth/2,numseats1);
                 z=obj.seatheight+floorheight;
@@ -360,8 +356,11 @@ classdef interior
                     position=[x(i) y z];
                     obj.plotseats(position,orient,obj.seatwidth,obj.seatlength,obj.backrestheight,handle)
                 end
-                seatarea4_length=(seatarea3_length-doorwidth-200)/2;
-                numseats4=floor(seatarea4_length/(seatwidth+2*seatgap));
+              %  seatarea4_length=(seatarea3_length-doorwidth-200)/2;
+               % numseats4=floor(seatarea4_length/(seatwidth+2*seatgap));
+                seatarea4_length=(seatarea3_length-(doorwidth+200))/2;
+                numseats4=floor(seatarea4_length/(seatwidth+2*seatgap))*(seatarea4_length>0);
+                   
                 if numseats4>0
                     x=linspace(seatarea4_length-seatwidth/2+doorwidth/2,doorwidth/2+200+seatwidth/2,numseats4);
                     y=0.5*vehiclewidth-50-seatlength/2;
@@ -388,7 +387,7 @@ classdef interior
             end
             
             
-           
+            
         end
         
         function plotseats(obj,position,orient,seatwidth,seatlength,backrestheight,handle)
