@@ -8,18 +8,20 @@ classdef body
         groundclearance=150;
         doors
         cost
-        structuremass
-        structurecost
+        mass
         wheelhousingheight
         wheelhousingwidth
         frontoverhang
         rearoverhang
         doorwidth=1250;
-        sectionheight=100;
+        sectionheight=60; %100 mm square section
+        sectionwidth=100; %square section for ladder frame;
+        sectionthickness=6; % 4mm thickness %c section - 210x76x6
     end
     properties (Access=private)
         aluminiumrawprice=3.5; %material costs
         structure_materialutilisation=0.52; %production cost Fuchs
+        
     end
     methods
         
@@ -30,7 +32,7 @@ classdef body
             obj.wheelbase=wheelbase;
             obj.numberdecks=numberdecks;
             obj=updatestructure(obj);
-            obj.cost=obj.structurecost; % derive better cost model
+            %obj.cost=obj.bodycost; % derive better cost model
             
         end
         function obj=update_body(obj,wheeldiameter,wheelwidth,airspringdiameter)
@@ -51,12 +53,13 @@ classdef body
             L = obj.length/1000;
             W = obj.width/1000;
             H =obj.height/1000;
-            Volume = 2 * (5/1000) * ((L * W) + (L * H) + (W * H)); % assuming 5mm thickness
-            
-            obj.structuremass=Volume*1000*5;
-            obj.structurecost=obj.structuremass*...
+            panelthickness=5/1000;% 5mm thickness
+            Volume = 2 * panelthickness * ((L * W) + (L * H) + (W * H)); % assuming 5mm thickness
+            aluminiumdensity=2710; %kg/m3
+            obj.mass=Volume*aluminiumdensity; 
+            obj.cost=obj.mass*...
                 (obj.aluminiumrawprice/...
-                obj.structure_materialutilisation)*1.53;
+                obj.structure_materialutilisation)*1.53; % cost of body surfaces
         end
         function obj=updatebody(length,width,height,wheelbase,numberdecks)
             obj.length=length;
@@ -201,16 +204,19 @@ classdef body
                  
              end
         end
-        
+        function mass=superstructureestimation(obj)
+            
+            
+        end
         function plotstucture_frame(obj,handle,position,vehiclelength)
 %             position =[0 0 0];
-             length=vehiclelength;
-            width= 100;
-            height = 100;
+            length=vehiclelength;
+            width= obj.sectionwidth;
+            height = obj.sectionheight;
             position(3)=position(3)+height/2+5;
             position(2)=((position(2)>0)* (position(2)-width/2))+...
                 ((position(2)<0)* (position(2)+width/2));
-            thickness=3;
+            thickness=obj.sectionthickness;
             orient=[0 0 0];
             colr = [.8 .8 .8];
             alph = 1;
@@ -257,7 +263,6 @@ classdef body
             colr = [1 1 1];
             alph = 0.5;
             length = 1.5*wheeldiameter;
-            springdiameter=300
             %% roof
             % side right surface
             n=10; % points in the fillet radi
@@ -598,12 +603,12 @@ classdef body
             floor=[[facel(1:2,1);floor(3,1)],floor,[facer(1:2,1);floor(3,1)]];
             leftwall=patch(handle,'Faces', [1:32],'Vertices', facel','FaceColor', colr);
             rightwall=patch(handle,'Faces', [1:32],'Vertices', facer','FaceColor', colr);
-            roofpatch=patch(handle,'Faces', facerf,'Vertices', roof','FaceColor', colr,'LineStyle','none')
+            roofpatch=patch(handle,'Faces', facerf,'Vertices', roof','FaceColor', colr,'LineStyle','none');
             bottom=patch(handle,'Faces', facebt,'Vertices', bot','FaceColor', colr,'LineStyle','none');
             floor=patch(handle,'Faces', [1:22],'Vertices', floor','FaceColor', colr);
             colr=[0 0 1];
             alph=0.2;
-            windShield=patch(handle,'Faces', facews,'Vertices', ws','FaceColor', colr,'FaceAlpha',alph,'LineStyle','none')
+            windShield=patch(handle,'Faces', facews,'Vertices', ws','FaceColor', colr,'FaceAlpha',alph,'LineStyle','none');
             
             
             
@@ -854,7 +859,7 @@ classdef body
             bot4Vertices=obj.translate(bot4Vertices,position);
             bot5Vertices=obj.translate(bot5Vertices,position);
             
-            floor=patch(handle,'Faces', floorfaces,'Vertices', floorVertices','FaceColor', colr) %,'FaceAlpha',alph)
+            floor=patch(handle,'Faces', floorfaces,'Vertices', floorVertices','FaceColor', colr); %,'FaceAlpha',alph)
             %bucket=patch('Faces', bottomfaces,'Vertices', bottomVertices','FaceColor', colr) %,'FaceAlpha',alph)
             %roof=patch('Faces', rooffaces,'Vertices', roofVertices','FaceColor', colr) %,'FaceAlpha',alph)
             patch(handle,'Faces', [1:4],'Vertices', rf1Vertices','FaceColor', colr);

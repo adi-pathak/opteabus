@@ -202,7 +202,7 @@ classdef vehicleconcept
                 return
             
             % constraint 3 wheelbase +tire diameter<vehicle length
-            elseif (5+Vehicle.Body.wheelbase+(2*Vehicle.Chassis.tyrediameter))>Vehicle.Body.length
+            elseif (5+Vehicle.Body.wheelbase+(1.05*Vehicle.Chassis.tyrediameter))>Vehicle.Body.length
             flag=-1;
             disp('wheelbase too big')
             return
@@ -210,11 +210,15 @@ classdef vehicleconcept
                 flag=-1;
                 disp('legroom too small')
                 return
+            elseif Vehicle.Interior.seatpitch<650 % aisle width cannot be less than 400
+                flag=-1;
+                disp('legroom too small')
+                return
             else
                 flag=0;
             end
             
-               
+            
             
         end
       

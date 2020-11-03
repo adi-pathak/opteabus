@@ -17,11 +17,15 @@ classdef chassis
         rimsize
         airspringdiameter=300;
         airspringheight=285;
-        airtankdiameter=220;
+        airtankdiameter=210;
         airtanklength=450;
     end
     properties (Access=private)
         passengermass=70; %kg
+        sectionheight=60; %100 mm square section
+        sectionwidth=100; %square section for ladder frame;
+        sectionthickness=6; % 6mm thickness
+        density=7750; %kg/m3 density of steel used in ladder frame
     end
     methods
         function [obj,Vehicle,gvm,unladenmass,glidermass]=chassis(Vehicle)
@@ -29,18 +33,20 @@ classdef chassis
             powertrain=Vehicle.Powertrain;
             body=Vehicle.Body;
             interior=Vehicle.Interior;
-            Load = (battery.mass + powertrain.mass +...
-                body.structuremass + interior.mass +...
-                (interior.passengercapacity*obj.passengermass));                              % Total Axle Load
+            passengermass=interior.passengercapacity*obj.passengermass;
+            framemass=ladderframemass(obj,body.length,body.width);
+            sprungmass = (battery.mass + powertrain.mass +...
+                body.mass + interior.mass +...
+                passengermass+framemass);                              % Total Axle Load
             
             
-            if  (Load>23500)             % Add a third axle if load exceeds
+            if  (sprungmass>23500)             % Add a third axle if load exceeds
                 obj.numberofaxles=3;
             else
                 obj.numberofaxles=2;
             end
             
-            AxleLoad = Load/obj.numberofaxles;                                % Axle Load for chassis decision assuming 50% distribution
+            AxleLoad = sprungmass/obj.numberofaxles; % Axle Load for chassis decision assuming 50% distribution
             obj.axleload=AxleLoad;
             %% Axle correlation (Based on the ZF Database)
             % Front axle selection
@@ -51,29 +57,30 @@ classdef chassis
             
             % Third axle selection (if applicable)
             if obj.numberofaxles==3
-                obj=obj.ZFchassis('TA',Basisfahrzeug.chassis.AxleLoad);
+                obj=obj.ZFchassis('TA',AxleLoad);
                 
                 obj.mass= obj.TA.mass + obj.FA.mass + obj.RA.mass;
             else
                 obj.mass= obj.FA.mass + obj.RA.mass;
             end
             obj = obj.axlecosts(AxleLoad);% Chassis cost
-            glidermass = (body.structuremass + interior.mass +...
-                obj.mass+ powertrain.mass);                              % glider mass
+            glidermass = (body.mass + interior.mass +...
+                obj.mass+ powertrain.mass+framemass);                              % glider mass
             unladenmass=(battery.mass + powertrain.mass +...
-                body.structuremass + interior.mass);
-            gvm=obj.mass+Load;
-            obj=tiresizing(obj,unladenmass,gvm);
+                obj.mass+  body.mass + interior.mass+framemass);
+            gvm=obj.mass+sprungmass;
+            obj=tyresizing(obj,unladenmass,gvm);
            % obj=airspringsizing(obj,unladenmass,gvm);
+           % add tire mass to gvm
            %% update body dimensions - tire size,front and rear overhang
            Vehicle.Body=Vehicle.Body.update_body(obj.tyrediameter,obj.tyrewidth...
                ,obj.airspringdiameter);
            Vehicle.Battery=Vehicle.Battery.maxstoragecapacity(body.wheelbase,body.width,Vehicle.Body.wheelhousingwidth,...
-               Vehicle.Body.rearoverhang,obj.tyrediameter,interior.floorheight,body.sectionheight,...
+               Vehicle.Body.rearoverhang,obj.tyrediameter,interior.floorheight,body.sectionwidth,...
                 body.groundclearance);
         
         end
-        function obj = ZFchassis(obj,type,load)
+        function obj=ZFchassis(obj,type,load)
             if strcmp(type,'FA')
                 
                 if load < 5800
@@ -82,11 +89,13 @@ classdef chassis
                     obj.FA.maxSteering = 55;
                     obj.FA.mass = 425;
                     obj.FA.RearWheelSteering = 1;
+                    obj.FA.wheels=2; %number of wheels
                 elseif load < 7500
                     obj.FA.name = 'RL 75 A';
                     obj.FA.maxLoad = 7500;
                     obj.FA.maxSteering = 60;
                     obj.FA.mass = 527;
+                    obj.FA.wheels=2; %number of wheels
                     %
                     %                 elseif load > 8200
                     %                     obj.FA.name = 'AVN 132';
@@ -94,16 +103,20 @@ classdef chassis
                     %                     obj.FA.maxSteering = 0;
                     %                     obj.FA.mass = 790;
                     %                     obj.FA.RearWheelSteering = 0;
-                    
+                elseif load < 8500
+                    obj.RA.name = 'RL 82 EC';
+                    obj.RA.maxLoad = 8200;
+                    obj.RA.maxSteering = 56;
+                    obj.RA.mass = 482;
+                    obj.RA.RearWheelSteering = 1; 
+                    obj.FA.wheels=2; %number of wheels
                 else
                     obj.FA.name = 'RL 82 A';
                     obj.FA.maxLoad = 8200;
                     obj.FA.maxSteering = 55;
                     obj.FA.mass = 527;
+                    obj.FA.wheels=2; %number of wheels
                 end
-                
-                
-                
             elseif strcmp(type, 'TA')
                 if load < 7500
                     obj.TA.name = 'RL 75 A';
@@ -116,7 +129,6 @@ classdef chassis
                     obj.TA.maxSteering = 55;
                     obj.TA.mass = 527;
                 end
-                
             else
                 if load < 5800
                     obj.RA.name = 'RL 55 EC';
@@ -124,21 +136,23 @@ classdef chassis
                     obj.RA.maxSteering = 55;
                     obj.RA.mass = 425;
                     obj.RA.RearWheelSteering = 1;
+                    obj.RA.wheels=2; %number of wheels
                 elseif load < 7500
                     obj.RA.name = 'RL 75 E';
                     obj.RA.maxLoad = 7500;
                     obj.RA.maxSteering = 60;
                     obj.RA.mass = 496;
                     obj.RA.RearWheelSteering = 1;
+                    obj.RA.wheels=4; %number of wheels
                 elseif load < 13000
                     obj.RA.name = 'RL 82 EC';
                     obj.RA.maxLoad = 8200;
                     obj.RA.maxSteering = 56;
                     obj.RA.mass = 482;
                     obj.RA.RearWheelSteering = 1;
+                    obj.RA.wheels=4; %number of wheels
                 elseif load < 8200
                 end
-                
             end
         end
         function obj=axlecosts(obj,axleload)
@@ -180,7 +194,7 @@ classdef chassis
                 obj.axlecost=obj.FA.cost + obj.RA.cost+ extracost;
             end
         end
-        function obj=tiresizing(obj,unladenmass,grossvehiclemass)
+        function obj=tyresizing(obj,unladenmass,grossvehiclemass)
             %% Mass configurations vehicle (unladen, unladen +25% payload, unladen +50% payload, Fully laden, Laden + 25% Payload)
             % FAWL: Front Axle Weight Laden
             % FAWUL: Front Axle Weight Unladen
@@ -229,8 +243,7 @@ classdef chassis
             
             %% Tyre Selection
             % Load Data from Database
-            % DBConnection; % calls script for the data base connection
-            load(fullfile(pwd,filesep,'classes',(filesep),'Tyredata.mat'));
+           load(fullfile(pwd,filesep,'classes',(filesep),'Tyredata.mat'));
             % 50:50 axle load!
             
             i =1;
@@ -899,7 +912,25 @@ classdef chassis
             
             
         end
-        
+        function mass=ladderframemass(obj,length,width)
+           
+            thickness=obj.sectionthickness;
+            intercrossmemberdistance=800; %mm  
+            numcrossmembers=floor(length/intercrossmemberdistance);
+            raillength=length/1000;
+            crossraillength=width/1000; %vehicle width
+            height=obj.sectionheight/1000; % in m
+            width=obj.sectionwidth/1000; % in m
+            numrails=2; % 2 longitudinal rails
+            railvolume=((height*width) - ((height-thickness*2/1000)*...
+                (width-thickness*2/1000)))*raillength;
+            crossrailvolume=((height*width) - ((height-thickness*2/1000)*...
+                (width-thickness*2/1000)))*crossraillength;
+            railmass=railvolume*obj.density;
+            crossrailmass=crossrailvolume*obj.density;
+            mass=numrails*railmass + numcrossmembers*crossrailmass;
+            
+        end
         function plotchassis(obj,handle,wheelbase,vehiclewidth,groundclearance)
             width=obj.tyrewidth;%274.32; % tire width
             outerdiameter=obj.tyrediameter;%817.88;
@@ -929,7 +960,7 @@ classdef chassis
             airspringplot(obj,springpos,handle);
            airtankplot(obj,[airspringpositionyfront airspringpositionyright 0],handle);
             position=[-wheelbase/2 -(vehiclewidth-width)/2 (outerdiameter/2-groundclearance)];
-            obj.tireplot(position,width,outerdiameter,innerdiameter,handle)
+            obj.tireplot(position,width,outerdiameter,innerdiameter,handle);
             springpos=[-wheelbase/2 springpositionyr springpositionz];
             airspringplot(obj,springpos,handle);
             airtankplot(obj,[airspringpositionyback airspringpositionyright 0],handle);
