@@ -21,7 +21,7 @@ classdef body
     properties (Access=private)
         aluminiumrawprice=3.5; %material costs
         structure_materialutilisation=0.52; %production cost Fuchs
-        
+        aluminiumdensity=2710; %kg/m3
     end
     methods
         
@@ -32,6 +32,7 @@ classdef body
             obj.wheelbase=wheelbase;
             obj.numberdecks=numberdecks;
             obj=updatestructure(obj);
+            superstructureestimation(obj);
             %obj.cost=obj.bodycost; % derive better cost model
             
         end
@@ -205,6 +206,45 @@ classdef body
              end
         end
         function mass=superstructureestimation(obj)
+            
+            % This function estimates the mass of the bus superstructure
+            % using the density of the material and the volume of the rail
+            % sections. The function returns the total mass of the
+            % structure
+            
+            %%
+            sectionheight=60/1000; %in mm
+            sectionwidth=100/1000; %in mm
+            sectionthickness=2/1000; %in mm
+            length=obj.length; %vehicle length
+            width=obj.width; %vehicle width
+            height=obj.height; %vehicle height
+            numwaistrails=2; % 2 waist rails
+            numcantrails=2; % 2 cant rails
+            
+            % cant rail - runs longitudinally on the roof edges
+            cantrailvolume=((sectionheight*sectionwidth) - ((sectionheight-sectionthickness*2/1000)*...
+                (sectionwidth-sectionthickness*2/1000)))*length;
+             cantrailmass=cantrailvolume*obj.aluminiumdensity*numcantrails;
+            
+            % waist rail - besides the seats
+             waistrailvolume=((sectionheight*sectionwidth) - ((sectionheight-sectionthickness*2/1000)*...
+                (sectionwidth-sectionthickness*2/1000)))*length;
+             waistrailmass=waistrailvolume*obj.aluminiumdensity*numwaistrails;
+            % seat rail
+            
+            % skirt rail 
+            
+            
+            %% 
+            % A Pillar
+            
+            % Window  vertical pillars
+            
+            % Roof arches
+            
+            % 
+            
             
             
         end
