@@ -14,6 +14,8 @@ classdef body
         frontoverhang
         rearoverhang
         doorwidth=1250;
+        superstructuremass
+        superstructurecost
         sectionheight=60; %100 mm square section
         sectionwidth=100; %square section for ladder frame;
         sectionthickness=6; % 4mm thickness %c section - 210x76x6
@@ -22,6 +24,8 @@ classdef body
         aluminiumrawprice=3.5; %material costs
         structure_materialutilisation=0.52; %production cost Fuchs
         aluminiumdensity=2710; %kg/m3
+        steeldensity=7800; %kg/m3
+        steelrawprice=6.67; %EUR/kg
     end
     methods
         
@@ -31,9 +35,9 @@ classdef body
             obj.width=width;
             obj.wheelbase=wheelbase;
             obj.numberdecks=numberdecks;
-            obj=updatestructure(obj);
-            superstructureestimation(obj);
-            %obj.cost=obj.bodycost; % derive better cost model
+            obj=updatebodyexterior(obj);
+           [obj.superstructuremass,obj.superstructurecost]=superstructureestimation(obj);
+           
             
         end
         function obj=update_body(obj,wheeldiameter,wheelwidth,airspringdiameter)
@@ -49,7 +53,7 @@ classdef body
         obj.wheelhousingheight=wheeldiameter+40;
         obj.wheelhousingwidth=wheelwidth+50+airspringdiameter;
         end
-        function obj=updatestructure(obj)
+        function obj=updatebodyexterior(obj)
             
             L = obj.length/1000;
             W = obj.width/1000;
@@ -205,7 +209,7 @@ classdef body
                  
              end
         end
-        function mass=superstructureestimation(obj)
+        function [mass,cost]=superstructureestimation(obj)
             
             % This function estimates the mass of the bus superstructure
             % using the density of the material and the volume of the rail
@@ -214,39 +218,75 @@ classdef body
             
             %%
             sectionheight=60/1000; %in mm
-            sectionwidth=100/1000; %in mm
-            sectionthickness=2/1000; %in mm
-            length=obj.length; %vehicle length
-            width=obj.width; %vehicle width
-            height=obj.height; %vehicle height
+            sectionwidth=50/1000;%100/1000; %in mm
+            sectionthickness=3/1000; %in mm
+            length=obj.length/1000; %vehicle length
+            width=obj.width/1000; %vehicle width
+            height=obj.height/1000; %vehicle height
             numwaistrails=2; % 2 waist rails
             numcantrails=2; % 2 cant rails
-            
+            numseatrails=2;
+            numskirtrails=2;
+            density=obj.aluminiumdensity;
+            density=7800;
+            %
+            sectionarea=((sectionheight*sectionwidth) - ((sectionheight-sectionthickness*2)*...
+                (sectionwidth-sectionthickness*2)));
+            %
             % cant rail - runs longitudinally on the roof edges
-            cantrailvolume=((sectionheight*sectionwidth) - ((sectionheight-sectionthickness*2/1000)*...
-                (sectionwidth-sectionthickness*2/1000)))*length;
-             cantrailmass=cantrailvolume*obj.aluminiumdensity*numcantrails;
+            cantrailvolume=sectionarea*length;
+             cantrailmass=cantrailvolume*density*numcantrails;
             
-            % waist rail - besides the seats
-             waistrailvolume=((sectionheight*sectionwidth) - ((sectionheight-sectionthickness*2/1000)*...
-                (sectionwidth-sectionthickness*2/1000)))*length;
-             waistrailmass=waistrailvolume*obj.aluminiumdensity*numwaistrails;
+            % waist rail - longitudinally besides the seats
+             waistrailvolume=sectionarea*length;
+             waistrailmass=waistrailvolume*density*numwaistrails;
             % seat rail
+            seatrailvolume=sectionarea*length;
+             seatrailmass=seatrailvolume*density*numseatrails;
             
             % skirt rail 
-            
-            
+             skirtrailvolume=sectionarea*length;
+             skirtrailmass=skirtrailvolume*density*numskirtrails;
+                      
             %% 
             % A Pillar
-            
+            apillarvolume=sectionarea*height;
+             apillarmass=apillarvolume*density*2;
+                  
             % Window  vertical pillars
+            intercrossmemberdistance=900/1000; %mm  
+            numcrossmembers=floor(length/intercrossmemberdistance);
+            vertpillarvolume=sectionarea*height;
+              vertpillarmass=vertpillarvolume*density*2*numcrossmembers;
+           
             
             % Roof arches
+            roofarchvolume=sectionarea*width;
+              roofarchmass=roofarchvolume*density*numcrossmembers;
             
-            % 
+              %roof rail
+                roofarchvolume=sectionarea*length;
+                lateralcrossmemberdistance=600/1000;
+                numlatcrossmembers=floor(width/lateralcrossmemberdistance);
+              roofrailmass=roofarchvolume*density*numlatcrossmembers;
+              
+              % floor rail
+            floorrailvolume=sectionarea*width;
+              floorrailmass=floorrailvolume*density*numcrossmembers;
             
+              %floor crossmember
+                floorlatrailvolume=sectionarea*length;
+                lateralcrossmemberdistance=600/1000;
+                numlatcrossmembers=floor(width/lateralcrossmemberdistance);
+              floorlatrailmass=floorlatrailvolume*density*numlatcrossmembers;
+           
+           
+          % 
             
-            
+            mass=roofarchmass+vertpillarmass+apillarmass+skirtrailmass+waistrailmass...
+                +seatrailmass+cantrailmass+roofrailmass+floorrailmass+floorlatrailmass;
+            cost= mass*(obj.steelrawprice/...
+                obj.structure_materialutilisation)*1.53; % cost of superstructure
         end
         function plotstucture_frame(obj,handle,position,vehiclelength)
 %             position =[0 0 0];

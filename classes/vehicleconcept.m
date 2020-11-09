@@ -83,7 +83,8 @@ classdef vehicleconcept
         end
         
         function [acquisitioncost,bomcost]=BOM(Vehicle)
-            BOMcost=(Vehicle.Body.cost+Vehicle.Interior.costs+Vehicle.Battery.cost+Vehicle.Powertrain.cost+Vehicle.Chassis.axlecost)*Vehicle.exchangerate;
+            BOMcost=(Vehicle.Body.cost+Vehicle.Body.superstructurecost+...
+                +Vehicle.Chassis.axlecost+Vehicle.Chassis.ladderframecost+Vehicle.Interior.costs+Vehicle.Battery.cost+Vehicle.Powertrain.cost)*Vehicle.exchangerate;
             if Vehicle.Body.length==12000
                 glidercost=210000;
                 BOMcost=(glidercost+Vehicle.Battery.cost+Vehicle.Powertrain.cost)*Vehicle.exchangerate;

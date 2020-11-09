@@ -3,6 +3,8 @@ classdef chassis
         axleload
         numberofaxles
         axlecost
+        ladderframemass
+        ladderframecost
         mass
         FA
         RA
@@ -26,6 +28,9 @@ classdef chassis
         sectionwidth=100; %square section for ladder frame;
         sectionthickness=6; % 6mm thickness
         density=7750; %kg/m3 density of steel used in ladder frame
+        steelrawprice=6.67; %EUR/kg
+        structure_materialutilisation=0.52; %production cost Fuchs
+        
     end
     methods
         function [obj,Vehicle,gvm,unladenmass,glidermass]=chassis(Vehicle)
@@ -34,9 +39,11 @@ classdef chassis
             body=Vehicle.Body;
             interior=Vehicle.Interior;
             passengermass=interior.passengercapacity*obj.passengermass;
-            framemass=ladderframemass(obj,body.length,body.width);
+            [framemass,framecost]=ladderframe(obj,body.length,body.width);
+            obj.ladderframemass=framemass;
+            obj.ladderframecost=framecost;
             sprungmass = (battery.mass + powertrain.mass +...
-                body.mass + interior.mass +...
+                body.mass + body.superstructuremass+interior.mass +...
                 passengermass+framemass);                              % Total Axle Load
             
             
@@ -64,10 +71,10 @@ classdef chassis
                 obj.mass= obj.FA.mass + obj.RA.mass;
             end
             obj = obj.axlecosts(AxleLoad);% Chassis cost
-            glidermass = (body.mass + interior.mass +...
+            glidermass = (body.mass + body.superstructuremass+ interior.mass +...
                 obj.mass+ powertrain.mass+framemass);                              % glider mass
             unladenmass=(battery.mass + powertrain.mass +...
-                obj.mass+  body.mass + interior.mass+framemass);
+                obj.mass+  body.mass + body.superstructuremass+ interior.mass+framemass);
             gvm=obj.mass+sprungmass;
             obj=tyresizing(obj,unladenmass,gvm);
            % obj=airspringsizing(obj,unladenmass,gvm);
@@ -912,7 +919,7 @@ classdef chassis
             
             
         end
-        function mass=ladderframemass(obj,length,width)
+        function [mass,cost]=ladderframe(obj,length,width)
            
             thickness=obj.sectionthickness;
             intercrossmemberdistance=800; %mm  
@@ -929,7 +936,8 @@ classdef chassis
             railmass=railvolume*obj.density;
             crossrailmass=crossrailvolume*obj.density;
             mass=numrails*railmass + numcrossmembers*crossrailmass;
-            
+            cost= mass*(obj.steelrawprice/...
+                obj.structure_materialutilisation)*1.53; % cost of frame
         end
         function plotchassis(obj,handle,wheelbase,vehiclewidth,groundclearance)
             width=obj.tyrewidth;%274.32; % tire width
