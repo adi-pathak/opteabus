@@ -5,7 +5,7 @@ classdef powertrain %< driveunit & battery & wheel
         mass
         cost
         totalpower
-        powersplit
+        powersplit=0; %rearwheel driven
         FA1
         FA2
         RA1
@@ -13,25 +13,25 @@ classdef powertrain %< driveunit & battery & wheel
         emissions
     end
     properties (Constant)
-        structure=[0 0 1 1 2
-            1 2 1 2 2];
+        structure=[0 0 1 1 2  % Front axle motor num
+                   1 2 1 2 2]; % Rear axle motor num
     end
     methods
-        function obj=powertrain(topology,totalpower,powersplit,numberofgears,vehicle)
+        function obj=powertrain(topology,totalpower,powersplit,gearratio,vehicle)
             obj.topology=topology;
             obj.totalpower=totalpower;
             obj.powersplit=powersplit;
             
-            if  obj.structure(1,obj.topology)>0
+            if  obj.structure(1,obj.topology)>0 
                 if  obj.structure(1,obj.topology)<2
                     motorpower=obj.totalpower*obj.powersplit;
-                    obj.FA1=driveunit(motorpower,numberofgears);
+                    obj.FA1=driveunit(motorpower,gearratio);
                     obj.FA2=0;
                     FAcost=obj.FA1.driveunitcost;
                     FAmass=obj.FA1.motor.mass+obj.FA1.inverter.mass+obj.FA1.transmission.mass;
                 else
                     motorpower=obj.totalpower*obj.powersplit/2;
-                    obj.FA1=driveunit(motorpower,numberofgears);
+                    obj.FA1=driveunit(motorpower,gearratio);
                     obj.FA2=obj.FA1;
                     FAcost=2*(obj.FA1.driveunitcost);
                     FAmass=2*(obj.FA1.motor.mass+obj.FA1.inverter.mass+obj.FA1.transmission.mass);
@@ -41,13 +41,13 @@ classdef powertrain %< driveunit & battery & wheel
             end
             if  obj.structure(2,obj.topology)<2
                 motorpower=obj.totalpower*(1-obj.powersplit);
-                obj.RA1=driveunit(motorpower,numberofgears);
+                obj.RA1=driveunit(motorpower,gearratio);
                 obj.RA2=0;
                 RAcost=obj.RA1.driveunitcost;
                 RAmass=obj.RA1.motor.mass+obj.RA1.inverter.mass+obj.RA1.transmission.mass;
             else
                 motorpower=(obj.totalpower*(1-obj.powersplit))/2;
-                obj.RA1=driveunit(motorpower,numberofgears);
+                obj.RA1=driveunit(motorpower,gearratio);
                 obj.RA2=obj.RA1;
                 RAcost=2*(obj.RA1.driveunitcost);
                 RAmass=2*(obj.RA1.motor.mass+obj.RA1.inverter.mass+obj.RA1.transmission.mass);

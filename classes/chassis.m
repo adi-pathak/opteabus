@@ -25,7 +25,7 @@ classdef chassis
     properties (Access=private)
         passengermass=70; %kg
         sectionheight=60; %100 mm square section
-        sectionwidth=100; %square section for ladder frame;
+        sectionwidth=120; %square section for ladder frame; % source at.govt.nzmedia/1976524/enviro200ev-brochure.pdf
         sectionthickness=6; % 6mm thickness
         steeldensity=7750; %kg/m3 density of steel used in ladder frame
         steelrawprice=6.67; %EUR/kg

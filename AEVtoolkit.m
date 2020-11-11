@@ -5,7 +5,7 @@ classdef AEVtoolkit
     %%
     properties
         GUI;
-        slope=[-0.222 -0.0667 -0.1333 0.1333 -0.0889 -2 0 0; % Service Performance
+        slope=[-0.1333 -0.0667 -0.1333 0.1333 -0.0889 -2 0 0; % Service Performance
             4.0000   -0.0444   -0.1333    1.5556   -4.0000    1.6444         0         0; % Accessibility
             0.5000    0.0444   -0.6222    0.4444    0.5000    0.5000    0.0889    0.5000; % Comfort
             0.5 0.5 0.5 0.5 0.5 0 0 0; % Functionality
@@ -15,13 +15,13 @@ classdef AEVtoolkit
             0.5 0.5 0.5 0 0 0 0 0; % Costs
             0.5 0.5 0.5 0 0 0 0 0; % Environment
             ];
-        inflexion=[15 51.75 28.65 22.75 40 0.1 0 0; % Service Performance
+        inflexion=[24 51.75 28.65 22.75 40 0.1 0 0; % Service Performance
             0.44 110.35 38.75 2 2.0 0.05 0 0; % Accessibility
             0.5000 930.0000    7.6782   19.4828    0.5000    0.5000  449.6552    0.5000; % Comfort
             0.5 0.5 0.5 0.5 0.5 0 0 0; % Functionality
             0.5 0.5 0.5 0 0 0 0 0; % Luxury
             0.5 0.5 0.3793 0.5 0.5 0 0 0; % Safety
-            65.2874 1.0000 0.5000 0  0         0         0         0; % Lngitudinal Dynamics
+            50 1.0000 0.5000 0  0         0         0         0; % Lngitudinal Dynamics
             0.5 0.5 0.5 0 0 0 0 0; % Costs
             0.5 0.5 0.5 0 0 0 0 0; % Environment
             ];
@@ -149,7 +149,7 @@ classdef AEVtoolkit
             
         end
         function plotValueFunction(obj,handle,slope,inflexion,xl,xu,xlabelname)
-            g0=4;
+            g0=1;
             gu=10;
             S=slope;
             W=inflexion;
