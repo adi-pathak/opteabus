@@ -59,7 +59,7 @@ classdef route
         function obj=passengerarrival(obj) %arrival of passengers at bus stop
             
             Tmax=60;
-            if isfield(obj.demand,'direction2')>0 % generate timetable for direction 2
+            if isfield(obj.demand,'direction_2')>0 % generate timetable for direction 2
                 OD=obj.demand.direction_2.OD;
                 boardingpassengers=cell(1,size(OD(:,:,:),1)); %create cell array boardingpassengers
                 for i=5:size(OD,3) % for each hour from 5 am to 24 am/ last 
