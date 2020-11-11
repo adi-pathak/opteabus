@@ -219,7 +219,7 @@ classdef body
             %%
             sectionheight=60/1000; %in mm
             sectionwidth=50/1000;%100/1000; %in mm
-            sectionthickness=3/1000; %in mm
+            sectionthickness=4/1000; %in mm
             length=obj.length/1000; %vehicle length
             width=obj.width/1000; %vehicle width
             height=obj.height/1000; %vehicle height
@@ -271,6 +271,8 @@ classdef body
               roofrailmass=roofarchvolume*density*numlatcrossmembers;
               
               % floor rail
+               intercrossmemberdistance=600/1000; %mm  
+            numcrossmembers=floor(length/intercrossmemberdistance);
             floorrailvolume=sectionarea*width;
               floorrailmass=floorrailvolume*density*numcrossmembers;
             

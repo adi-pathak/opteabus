@@ -18,6 +18,7 @@ classdef interior
         floorheight=370;
         interiorlength
         interiorwidth
+        interiorheight
         frontcrashlength=450;
         rearcrashlength=450;
     end
@@ -57,15 +58,17 @@ classdef interior
                 end
                 
             end
-            [obj]=updateinterior(obj,Vehicle);
+            obj=updateinterior(obj,Vehicle);
             obj.loadedmass=obj.passengermass*obj.passengercapacity;
+            obj=interiorsurfacemass(obj,Vehicle);
         end
-        function [obj]=updateinterior(obj,Vehicle)
+        function obj=updateinterior(obj,Vehicle)
             %
             if obj.interiorlayout==1 % coach layout
                 vehiclelength=Vehicle.Body.length;
                 interiorlength=vehiclelength-obj.frontcrashlength-obj.rearcrashlength; % reduce interior length for front and rear zones
                 obj.interiorlength=interiorlength;
+                obj.interiorheight=Vehicle.Body.height-obj.floorheight-10; % 5mm floor and roof panel thickness
                 seatpitch=obj.seatpitch;
                 seatwidth=obj.seatwidth;
                 seatlength=obj.seatlength;
@@ -157,7 +160,8 @@ classdef interior
                 vehiclelength=Vehicle.Body.length;
                 interiorlength=vehiclelength-obj.frontcrashlength-obj.rearcrashlength; % reduce interior length for front and rear zones
                 obj.interiorlength=interiorlength;
-                
+                obj.interiorheight=Vehicle.Body.height-obj.floorheight-10; % 5mm floor and roof panel thickness
+              
                 seatpitch=obj.seatpitch;
                 seatwidth=obj.seatwidth;
                 seatlength=obj.seatlength;
@@ -206,7 +210,19 @@ classdef interior
             obj.costs=obj.numberseats*264; %derive better interior cost model
             obj.mass=obj.numberseats*15; % weight of seats - derive better weight model
         end
-        
+        function obj=interiorsurfacemass(obj,Vehicle)
+             
+            L = obj.interiorlength/1000;
+            W = obj.interiorwidth/1000;
+            H =obj.interiorheight/1000;
+            panelthickness=5/1000;% 5mm thickness
+            Volume = 2 * panelthickness * ((L * W) + (L * H) + (W * H)); % assuming 5mm thickness
+            density=970; %kg/m3
+            obj.mass=obj.mass+Volume*density; 
+            obj.costs=obj.costs+obj.mass*...
+                (4/...
+                0.52)*1.53; % cost of seats + interior surfaces
+        end
         function plotinterior(obj,Vehicle,handle)
             if obj.interiorlayout==1 % coach layout
                 plotinterior1(obj,Vehicle,handle);
