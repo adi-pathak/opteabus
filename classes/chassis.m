@@ -87,6 +87,10 @@ classdef chassis
                body.sectionheight, body.groundclearance);
         
         end
+        function cog(body,chassis,battery,powertrain)
+            
+            
+        end
         function obj=ZFchassis(obj,type,load)
             if strcmp(type,'FA')
                 
@@ -103,13 +107,6 @@ classdef chassis
                     obj.FA.maxSteering = 60;
                     obj.FA.mass = 527;
                     obj.FA.wheels=2; %number of wheels
-                    %
-                    %                 elseif load > 8200
-                    %                     obj.FA.name = 'AVN 132';
-                    %                     obj.FA.maxLoad = 11500;
-                    %                     obj.FA.maxSteering = 0;
-                    %                     obj.FA.mass = 790;
-                    %                     obj.FA.RearWheelSteering = 0;
                 elseif load < 8500
                     obj.RA.name = 'RL 82 EC';
                     obj.RA.maxLoad = 8200;
