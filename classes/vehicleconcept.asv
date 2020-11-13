@@ -79,11 +79,12 @@ classdef vehicleconcept
                 ,Vehicle.Glidermass]=chassis(Vehicle);
             Vehicle.Chassis=Chassis;
             [Vehicle.Acquisitioncost,Vehicle.BOMcost]=BOM(Vehicle);
-            Vehicle.constraints=Vehicle.constraintscheck(Vehicle);
+            Vehicle.constraints=Vehicle.constraintscheck();
         end
         
         function [acquisitioncost,bomcost]=BOM(Vehicle)
-            BOMcost=(Vehicle.Body.cost+Vehicle.Interior.costs+Vehicle.Battery.cost+Vehicle.Powertrain.cost+Vehicle.Chassis.axlecost)*Vehicle.exchangerate;
+            BOMcost=(Vehicle.Body.cost+Vehicle.Body.superstructurecost+...
+                +Vehicle.Chassis.axlecost+Vehicle.Interior.costs+Vehicle.Battery.cost+Vehicle.Powertrain.cost)*Vehicle.exchangerate;
             if Vehicle.Body.length==12000
                 glidercost=210000;
                 BOMcost=(glidercost+Vehicle.Battery.cost+Vehicle.Powertrain.cost)*Vehicle.exchangerate;
@@ -190,22 +191,34 @@ classdef vehicleconcept
         function flag=constraintscheck(Vehicle)
             % constraint 1 - battery capacity should be less than max
             % battery
-            1
             if Vehicle.Battery.maxcapacity<=Vehicle.Battery.capacity
                 flag=-1;
+                disp('battery too big')
                 return
-            end
+            
             % constraint2 wheelbase should be greater than 0.5 *length
-            if Vehicle.Body.wheelbase<0.5*Vehicle.Body.length
+            elseif Vehicle.Body.wheelbase<0.4*Vehicle.Body.length
                 flag=-1;
+                disp('wheelbase too small')
                 return
-            end
-                
+            
             % constraint 3 wheelbase +tire diameter<vehicle length
-            if (5+Vehicle.Body.wheelbase+(2*Vehicle.Chassis.tyrediameter))>Vehicle.Body.length
-            flag=-1
+            elseif (5+Vehicle.Body.wheelbase+(1.05*Vehicle.Chassis.tyrediameter))>Vehicle.Body.length
+            flag=-1;
+            disp('wheelbase too big')
             return
+            elseif Vehicle.Interior.seatpitch<650 % seat pitch cannot be less than 650
+                flag=-1;
+                disp('legroom too small')
+                return
+            elseif Vehicle.Interior.seatpitch<650 % aisle width cannot be less than 400
+                flag=-1;
+                disp('legroom too small')
+                return
+            else
+                flag=0;
             end
+            
             
             
         end

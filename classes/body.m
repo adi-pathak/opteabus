@@ -218,7 +218,7 @@ classdef body
             
             %%
             sectionheight=60/1000; %in mm
-            sectionwidth=50/1000;%100/1000; %in mm
+            sectionwidth=50/1000;% %in mm
             sectionthickness=3/1000; %in mm
             length=obj.length/1000; %vehicle length
             width=obj.width/1000; %vehicle width
@@ -227,8 +227,7 @@ classdef body
             numcantrails=2; % 2 cant rails
             numseatrails=2;
             numskirtrails=2;
-            density=obj.aluminiumdensity;
-            density=7800;
+            density=obj.steeldensity;
             %
             sectionarea=((sectionheight*sectionwidth) - ((sectionheight-sectionthickness*2)*...
                 (sectionwidth-sectionthickness*2)));
