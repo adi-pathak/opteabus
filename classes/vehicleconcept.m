@@ -23,6 +23,7 @@ classdef vehicleconcept
         LCAemissions
         TTWemissions
         Energyconsumption
+        Emptyenergyconsumption
         Energythroughput
         Lifetime=17; % 17 years
         TCO
@@ -66,7 +67,7 @@ classdef vehicleconcept
             powertraintopology=vehicle_parameters(10);
             totalpower=vehicle_parameters(11);
             powersplit=vehicle_parameters(12);
-            numberofgears=vehicle_parameters(13);
+            gearratio=vehicle_parameters(13);
             batterycapacity=vehicle_parameters(14);
             
             
@@ -74,7 +75,7 @@ classdef vehicleconcept
             Vehicle.Interior=interior(interiorlayout,standingspace,seatwidth,seatpitch,0,Vehicle);%,wheelchairzones)
             Vehicle.Passengercapacity=Vehicle.Interior.passengercapacity;
             Vehicle.Battery=battery(batterycapacity,Vehicle.Body);
-            Vehicle.Powertrain=powertrain(powertraintopology,totalpower,powersplit,numberofgears);
+            Vehicle.Powertrain=powertrain(powertraintopology,totalpower,powersplit,gearratio);
             [Chassis,Vehicle,Vehicle.Grossvehiclemass,Vehicle.Unladenmass...
                 ,Vehicle.Glidermass]=chassis(Vehicle);
             Vehicle.Chassis=Chassis;

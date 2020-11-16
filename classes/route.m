@@ -59,7 +59,7 @@ classdef route
         function obj=passengerarrival(obj) %arrival of passengers at bus stop
             
             Tmax=60;
-            if isfield(obj.demand,'direction2')>0 % generate timetable for direction 2
+            if isfield(obj.demand,'direction_2')>0 % generate timetable for direction 2
                 OD=obj.demand.direction_2.OD;
                 boardingpassengers=cell(1,size(OD(:,:,:),1)); %create cell array boardingpassengers
                 for i=5:size(OD,3) % for each hour from 5 am to 24 am/ last 
@@ -522,17 +522,21 @@ classdef route
             dwellingtime_2=[];
             volume_1=zeros(24,size(obj.demand.direction_1.distance,1));
             capacity_1=zeros(24,size(obj.demand.direction_1.distance,1));
-            volume_2=zeros(24,size(obj.demand.direction_2.distance,1));
-            capacity_2=zeros(24,size(obj.demand.direction_2.distance,1));
+          
+           
             passengercapacity=obj.vehicleconcept.Passengercapacity;
             stops_1=size(obj.demand.direction1.distance,1);
-            stops_2=size(obj.demand.direction2.distance,1);
+          
             stops_coords1=obj.stopcoordinates(1:stops_1,:);
             stops_coords2=obj.stopcoordinates(stops_1+1:end,:);
             num_departures_1=0;
             num_departures_2=0;
             numseats=obj.vehicleconcept.Interior.numberseats;
-            
+            if isfield(obj.demand,'direction_2')>0 
+              volume_2=zeros(24,size(obj.demand.direction_2.distance,1));
+                stops_2=size(obj.demand.direction2.distance,1);
+               capacity_2=zeros(24,size(obj.demand.direction_2.distance,1));
+            end
             for i=1:length(obj.departures)  % for each departure
                 
                 if obj.departures(i,2)==1; %
@@ -588,38 +592,59 @@ classdef route
                 end
             end
             obj.timetable=timetable;
-            obj.missedboardings= sum(passengers_1(:,6))+sum(passengers_2(:,6));
-            obj.meaninvehicletime=mean([mean((passengers_1(:,1)-passengers_1(:,2))*60);mean((passengers_2(:,1)-passengers_2(:,2))*60)]);
-            obj.meanwaitingtime=mean([mean((passengers_1(:,2)-passengers_1(:,3))*60);mean((passengers_2(:,2)-passengers_2(:,3))*60)]);
-            obj.passengerkm=sum([(passengers_1(:,9)-passengers_1(:,8))/1000;(passengers_2(:,9)-passengers_2(:,8))/1000]);
             obj.passengersonboard.direction1=occupancy_1;
-            obj.passengersonboard.direction2=occupancy_2;
-            obj.meanoccupancy=mean([mean(mean(occupancy_2));mean(mean(occupancy_1))]);
             obj.passengers.d1=passengers_1;
-            obj.passengers.d2=passengers_2;
-            obj.totalpassengers=[passengers_1 ;passengers_2];
-            obj.seatavailabilityinmin=((obj.totalpassengers(:,7).*(obj.totalpassengers(:,1)-obj.totalpassengers(:,2)))*60);
-            obj.trajectories.d1.time=trajectory_time_1;
+           
+           obj.trajectories.d1.time=trajectory_time_1;
             obj.trajectories.d1.space=trajectory_stops_1;
-            obj.trajectories.d2.time=trajectory_time_2;
-            obj.trajectories.d2.space=trajectory_stops_2;
+           
             obj.simulationdata.d1=routedata_1;
-            obj.simulationdata.d2=routedata_2;
+          
             obj.dwellingtime.d1=dwellingtime_1;
-            obj.dwellingtime.d2=dwellingtime_2;
+             obj.volume.d1=volume_1;
+           
+            obj.capacity.d1=capacity_1;
+           
+            obj.volumecapacityratio.d1=round(volume_1./capacity_1*100);
+            obj.volumecapacityratio.d1(isnan(obj.volumecapacityratio.d1))=0;
+           
             if ~isempty(dwellingtime_2)
             obj.meandwellingtime=mean([mean(dwellingtime_1(dwellingtime_1~=0)) mean(dwellingtime_2(dwellingtime_2~=0))]);
             else
               obj.meandwellingtime=mean(dwellingtime_1(dwellingtime_1~=0));  
             end
-            obj.volume.d1=volume_1;
-            obj.volume.d2=volume_2;
-            obj.capacity.d1=capacity_1;
-            obj.capacity.d2=capacity_2;
-            obj.volumecapacityratio.d1=round(volume_1./capacity_1*100);
-            obj.volumecapacityratio.d1(isnan(obj.volumecapacityratio.d1))=0;
-            obj.volumecapacityratio.d2=round(volume_2./capacity_2*100);
+             if isfield(obj.demand,'direction_2')>0 
+                   obj.meanoccupancy=mean([mean(mean(occupancy_2));mean(mean(occupancy_1))]);
+          
+                   obj.missedboardings= sum(passengers_1(:,6))+sum(passengers_2(:,6));
+            obj.meaninvehicletime=mean([mean((passengers_1(:,1)-passengers_1(:,2))*60);mean((passengers_2(:,1)-passengers_2(:,2))*60)]);
+            obj.meanwaitingtime=mean([mean((passengers_1(:,2)-passengers_1(:,3))*60);mean((passengers_2(:,2)-passengers_2(:,3))*60)]);
+            obj.passengerkm=sum([(passengers_1(:,9)-passengers_1(:,8))/1000;(passengers_2(:,9)-passengers_2(:,8))/1000]);
+            obj.totalpassengers=[passengers_1 ;passengers_2];
+            obj.seatavailabilityinmin=((obj.totalpassengers(:,7).*(obj.totalpassengers(:,1)-obj.totalpassengers(:,2)))*60);
+          
+             obj.passengersonboard.direction2=occupancy_2;
+              obj.passengers.d2=passengers_2;
+               obj.trajectories.d2.time=trajectory_time_2;
+            obj.trajectories.d2.space=trajectory_stops_2;
+              obj.simulationdata.d2=routedata_2;
+              obj.dwellingtime.d2=dwellingtime_2;
+               obj.volume.d2=volume_2;
+                obj.capacity.d2=capacity_2;
+                 obj.volumecapacityratio.d2=round(volume_2./capacity_2*100);
             obj.volumecapacityratio.d2(isnan(obj.volumecapacityratio.d2))=0;
+             else
+                     obj.missedboardings= sum(passengers_1(:,6));
+            obj.meaninvehicletime=mean([mean((passengers_1(:,1)-passengers_1(:,2))*60)]);
+            obj.meanwaitingtime=mean([mean((passengers_1(:,2)-passengers_1(:,3))*60)]);
+            obj.passengerkm=sum([(passengers_1(:,9)-passengers_1(:,8))/1000;]);
+            obj.totalpassengers=[passengers_1];
+            obj.seatavailabilityinmin=((obj.totalpassengers(:,7).*(obj.totalpassengers(:,1)-obj.totalpassengers(:,2)))*60);
+               obj.meanoccupancy=mean([mean(mean(occupancy_1))]);
+          
+                 
+            end
+           
         end
         
     end

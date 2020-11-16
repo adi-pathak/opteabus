@@ -25,9 +25,9 @@ classdef chassis
     properties (Access=private)
         passengermass=70; %kg
         sectionheight=60; %100 mm square section
-        sectionwidth=100; %square section for ladder frame;
+        sectionwidth=120; %square section for ladder frame; % source at.govt.nzmedia/1976524/enviro200ev-brochure.pdf
         sectionthickness=6; % 6mm thickness
-        density=7750; %kg/m3 density of steel used in ladder frame
+        steeldensity=7750; %kg/m3 density of steel used in ladder frame
         steelrawprice=6.67; %EUR/kg
         structure_materialutilisation=0.52; %production cost Fuchs
         
@@ -84,8 +84,12 @@ classdef chassis
                ,obj.airspringdiameter);
            Vehicle.Battery=Vehicle.Battery.maxstoragecapacity(body.wheelbase,body.width,Vehicle.Body.wheelhousingwidth,...
                Vehicle.Body.rearoverhang,obj.tyrediameter,interior.floorheight,body.sectionwidth,...
-                body.groundclearance);
+               body.sectionheight, body.groundclearance);
         
+        end
+        function cog(body,chassis,battery,powertrain)
+            
+            
         end
         function obj=ZFchassis(obj,type,load)
             if strcmp(type,'FA')
@@ -103,13 +107,6 @@ classdef chassis
                     obj.FA.maxSteering = 60;
                     obj.FA.mass = 527;
                     obj.FA.wheels=2; %number of wheels
-                    %
-                    %                 elseif load > 8200
-                    %                     obj.FA.name = 'AVN 132';
-                    %                     obj.FA.maxLoad = 11500;
-                    %                     obj.FA.maxSteering = 0;
-                    %                     obj.FA.mass = 790;
-                    %                     obj.FA.RearWheelSteering = 0;
                 elseif load < 8500
                     obj.RA.name = 'RL 82 EC';
                     obj.RA.maxLoad = 8200;
@@ -922,7 +919,7 @@ classdef chassis
         function [mass,cost]=ladderframe(obj,length,width)
            
             thickness=obj.sectionthickness;
-            intercrossmemberdistance=800; %mm  
+            intercrossmemberdistance=700; %mm  
             numcrossmembers=floor(length/intercrossmemberdistance);
             raillength=length/1000;
             crossraillength=width/1000; %vehicle width
@@ -933,8 +930,8 @@ classdef chassis
                 (width-thickness*2/1000)))*raillength;
             crossrailvolume=((height*width) - ((height-thickness*2/1000)*...
                 (width-thickness*2/1000)))*crossraillength;
-            railmass=railvolume*obj.density;
-            crossrailmass=crossrailvolume*obj.density;
+            railmass=railvolume*obj.steeldensity;
+            crossrailmass=crossrailvolume*obj.steeldensity;
             mass=numrails*railmass + numcrossmembers*crossrailmass;
             cost= mass*(obj.steelrawprice/...
                 obj.structure_materialutilisation)*1.53; % cost of frame

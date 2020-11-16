@@ -1,4 +1,10 @@
 classdef body
+    %%
+    % This class creates the object of a bus body and defines the 
+    % dimensions of the vehicle exterior. The mass and cost of the 
+    % body panels, the superstructure is estimated.
+    
+    %%
     properties
         length;
         width;
@@ -14,10 +20,11 @@ classdef body
         frontoverhang
         rearoverhang
         doorwidth=1250;
+        doorheight=1900;
         superstructuremass
         superstructurecost
         sectionheight=60; %100 mm square section
-        sectionwidth=100; %square section for ladder frame;
+        sectionwidth=120; %square section for ladder frame;
         sectionthickness=6; % 4mm thickness %c section - 210x76x6
     end
     properties (Access=private)
@@ -35,23 +42,35 @@ classdef body
             obj.width=width;
             obj.wheelbase=wheelbase;
             obj.numberdecks=numberdecks;
+            obj.doors=((obj.length>8500)*2)+((obj.length<8500)*1);
+            if obj.doors==1
+                obj.frontoverhang=obj.length/2-obj.wheelbase/2;
+                obj.rearoverhang=obj.frontoverhang;
+            else
+                wheeldiameter=950; % initial estimate to calculate front overhang
+                obj.frontoverhang=0.2*(obj.height-obj.groundclearance)+obj.doorwidth+1.5*wheeldiameter/2;
+                obj.rearoverhang=obj.length-obj.frontoverhang-obj.wheelbase;
+                
+            end
             obj=updatebodyexterior(obj);
-           [obj.superstructuremass,obj.superstructurecost]=superstructureestimation(obj);
-           
+            [obj.superstructuremass,obj.superstructurecost]=superstructureestimation(obj);
+            
             
         end
         function obj=update_body(obj,wheeldiameter,wheelwidth,airspringdiameter)
-           obj.doors=((obj.length>8500)*2)+((obj.length<8500)*1);
-           if obj.doors==1
+            % this function updates the wheelhouse dimensions and overhangs based on the
+            % axle/tyre selection
+            obj.doors=((obj.length>8500)*2)+((obj.length<8500)*1);
+            if obj.doors==1
                 obj.frontoverhang=obj.length/2-obj.wheelbase/2;
-                obj.rearoverhang=obj.frontoverhang;                
+                obj.rearoverhang=obj.frontoverhang;
             else
                 obj.frontoverhang=0.2*(obj.height-obj.groundclearance)+obj.doorwidth+1.5*wheeldiameter/2;
                 obj.rearoverhang=obj.length-obj.frontoverhang-obj.wheelbase;
-               
-            end 
-        obj.wheelhousingheight=wheeldiameter+40;
-        obj.wheelhousingwidth=wheelwidth+50+airspringdiameter;
+                
+            end
+            obj.wheelhousingheight=wheeldiameter+40;
+            obj.wheelhousingwidth=wheelwidth+50+airspringdiameter;
         end
         function obj=updatebodyexterior(obj)
             
@@ -61,7 +80,7 @@ classdef body
             panelthickness=5/1000;% 5mm thickness
             Volume = 2 * panelthickness * ((L * W) + (L * H) + (W * H)); % assuming 5mm thickness
             aluminiumdensity=2710; %kg/m3
-            obj.mass=Volume*aluminiumdensity; 
+            obj.mass=Volume*aluminiumdensity;
             obj.cost=obj.mass*...
                 (obj.aluminiumrawprice/...
                 obj.structure_materialutilisation)*1.53; % cost of body surfaces
@@ -72,7 +91,7 @@ classdef body
             obj.width=width;
             obj.wheelbase=wheelbase;
             obj.numberdecks=obj.numberdecks;
-          
+            
         end
         function plotbody(obj,handle,vehicle)
             length=obj.length;
@@ -80,134 +99,134 @@ classdef body
             height=obj.height;
             groundclearance=obj.groundclearance;
             floorheight=vehicle.Interior.floorheight-groundclearance;
-               
             
-             if obj.doors==1  
-                 %% front section
-            position=[length/2-0.2*(height-groundclearance)
-                0
-                (height-groundclearance)/2];
-            obj.section_end(length,width,height,groundclearance,position,floorheight,handle);
-            %% door
-            doorwidth=1250;
-            doorheight=1900;
-            position=[0
-                0
-                (height-groundclearance)/2];
             
-            obj.section_door(length,width,height,doorwidth,doorheight,...
-                floorheight,groundclearance,position,handle);
-            
-            %% wheel housings
-            % if numaxles=2
-            wheelbase=obj.wheelbase;
-            diameter=vehicle.Chassis.tyrediameter;
-            wheelwidth=vehicle.Chassis.tyrewidth;
-            wheelhousingwidth=wheelwidth+50+vehicle.Chassis.airspringdiameter;
-            position=[wheelbase/2 0 (height-groundclearance)/2];
-            obj.section_housing(width,diameter,wheelwidth,groundclearance,height,floorheight,position,wheelhousingwidth,handle);
-            position=[-wheelbase/2 0 (height-groundclearance)/2];
-            obj.section_housing(width,diameter,wheelwidth,groundclearance,height,floorheight,position,wheelhousingwidth,handle);
-            %% back section
-            position=[-length/2+0.2*(height-groundclearance)
-                0
-                (height-groundclearance)/2];
-            obj.section_end(length,width,height,groundclearance,position,floorheight,handle)
-            %% sections
-            % section 1
-            length=(length/2-0.2*(height-groundclearance))-(wheelbase/2+1.5*diameter/2);
-            if length>0
-                position=[(wheelbase/2+1.5*diameter/2+length/2),0,(height-groundclearance)/2];
-                obj.section_window(length,width,height,groundclearance,floorheight,position,handle);
-                % section 2
-                position=[-(wheelbase/2+1.5*diameter/2+length/2),0,(height-groundclearance)/2];
-                obj.section_window(length,width,height,groundclearance,floorheight,position,handle);
-            end
-            % section 3
-            length=(wheelbase/2-1.5*diameter/2)-doorwidth/2;
-            if length>0
-                position=[(doorwidth/2+length/2),0,(height-groundclearance)/2];
-                obj.section_window(length,width,height,groundclearance,floorheight,position,handle);
-                % section 4
+            if obj.doors==1
+                %% front section
+                position=[length/2-0.2*(height-groundclearance)
+                    0
+                    (height-groundclearance)/2];
+                obj.section_end(length,width,height,groundclearance,position,floorheight,handle);
+                %% door
+                doorwidth=obj.doorwidth;
+                doorheight=obj.doorheight;
+                position=[0
+                    0
+                    (height-groundclearance)/2];
+                
+                obj.section_door(length,width,height,doorwidth,doorheight,...
+                    floorheight,groundclearance,position,handle);
+                
+                %% wheel housings
+                % if numaxles=2
+                wheelbase=obj.wheelbase;
+                diameter=vehicle.Chassis.tyrediameter;
+                wheelwidth=vehicle.Chassis.tyrewidth;
+                wheelhousingwidth=wheelwidth+50+vehicle.Chassis.airspringdiameter;
+                position=[wheelbase/2 0 (height-groundclearance)/2];
+                obj.section_housing(width,diameter,wheelwidth,groundclearance,height,floorheight,position,wheelhousingwidth,handle);
+                position=[-wheelbase/2 0 (height-groundclearance)/2];
+                obj.section_housing(width,diameter,wheelwidth,groundclearance,height,floorheight,position,wheelhousingwidth,handle);
+                %% back section
+                position=[-length/2+0.2*(height-groundclearance)
+                    0
+                    (height-groundclearance)/2];
+                obj.section_end(length,width,height,groundclearance,position,floorheight,handle)
+                %% sections
+                % section 1
+                length=(length/2-0.2*(height-groundclearance))-(wheelbase/2+1.5*diameter/2);
+                if length>0
+                    position=[(wheelbase/2+1.5*diameter/2+length/2),0,(height-groundclearance)/2];
+                    obj.section_window(length,width,height,groundclearance,floorheight,position,handle);
+                    % section 2
+                    position=[-(wheelbase/2+1.5*diameter/2+length/2),0,(height-groundclearance)/2];
+                    obj.section_window(length,width,height,groundclearance,floorheight,position,handle);
+                end
+                % section 3
                 length=(wheelbase/2-1.5*diameter/2)-doorwidth/2;
-                position=[-(doorwidth/2+length/2),0,(height-groundclearance)/2];
-                obj.section_window(length,width,height,groundclearance,floorheight,position,handle);
-            end
-            
-             length=obj.length-0.4*(height-groundclearance);
-             position=[0 width/2-wheelhousingwidth 0];
-            plotstucture_frame(obj,handle,position,length)
-              position=[0 -width/2+wheelhousingwidth 0];
-            plotstucture_frame(obj,handle,position,length)
-%             axis off
-%              view(handle,[0 00])
-             else
-                 %% section front
+                if length>0
+                    position=[(doorwidth/2+length/2),0,(height-groundclearance)/2];
+                    obj.section_window(length,width,height,groundclearance,floorheight,position,handle);
+                    % section 4
+                    length=(wheelbase/2-1.5*diameter/2)-doorwidth/2;
+                    position=[-(doorwidth/2+length/2),0,(height-groundclearance)/2];
+                    obj.section_window(length,width,height,groundclearance,floorheight,position,handle);
+                end
+                
+                length=obj.length-0.4*(height-groundclearance);
+                position=[0 width/2-wheelhousingwidth 0];
+                plotstucture_frame(obj,handle,position,length)
+                position=[0 -width/2+wheelhousingwidth 0];
+                plotstucture_frame(obj,handle,position,length)
+                %             axis off
+                %              view(handle,[0 00])
+            else
+                %% section front
                 position=[obj.wheelbase/2+obj.frontoverhang-0.2*(height-groundclearance)
-                0
-                (height-groundclearance)/2];
-            obj.section_end(length,width,height,groundclearance,position,floorheight,handle);
-               %% door 1 is at centre
-            doorwidth=1250;
-            doorheight=1900;
-            position=[0
-                0
-                (height-groundclearance)/2];
-            
-            obj.section_door(length,width,height,doorwidth,doorheight,...
-                floorheight,groundclearance,position,handle)
-               %% door 2 is at front
-            doorwidth=1250;
-            doorheight=1900;
-            position=[obj.wheelbase/2+obj.frontoverhang-0.2*(height-groundclearance)-doorwidth/2
-                0
-                (height-groundclearance)/2];
-            
-            obj.section_door(length,width,height,doorwidth,doorheight,...
-                floorheight,groundclearance,position,handle)
-            %% wheel housings
-            % if numaxles=2
-            wheelbase=obj.wheelbase;
-            diameter=vehicle.Chassis.tyrediameter;
-            wheelwidth=vehicle.Chassis.tyrewidth;
-            wheelhousingwidth=wheelwidth+50+vehicle.Chassis.airspringdiameter;
-            position=[wheelbase/2 0 (height-groundclearance)/2];
-            obj.section_housing(width,diameter,wheelwidth,groundclearance,height,floorheight,position,wheelhousingwidth,handle);
-            position=[-wheelbase/2 0 (height-groundclearance)/2];
-            obj.section_housing(width,diameter,wheelwidth,groundclearance,height,floorheight,position,wheelhousingwidth,handle);
-            %% back section
-            position=[-obj.wheelbase/2-obj.rearoverhang+0.2*(height-groundclearance)
-                0
-                (height-groundclearance)/2];
-            obj.section_end(length,width,height,groundclearance,position,floorheight,handle)
-            %% sections
-            % section 1
-            length=(wheelbase/2-1.5*diameter/2)-doorwidth/2;
-            if length>0
-                position=[(wheelbase/2-1.5*diameter/2-length/2),0,(height-groundclearance)/2];
-                obj.section_window(length,width,height,groundclearance,floorheight,position,handle);
-                % section 2
-                position=[-(wheelbase/2-1.5*diameter/2-length/2),0,(height-groundclearance)/2];
-                obj.section_window(length,width,height,groundclearance,floorheight,position,handle);
-            end
-            % section 3
-            length= obj.rearoverhang-0.2*(height-groundclearance)-1.5*diameter/2;
-            if length>0
-                position=[(-wheelbase/2-1.5*diameter/2-length/2),0,(height-groundclearance)/2];
-                obj.section_window(length,width,height,groundclearance,floorheight,position,handle);
+                    0
+                    (height-groundclearance)/2];
+                obj.section_end(length,width,height,groundclearance,position,floorheight,handle);
+                %% door 1 is at centre
+                doorwidth=obj.doorwidth;
+                doorheight=obj.doorheight;
+                position=[0
+                    0
+                    (height-groundclearance)/2];
+                
+                obj.section_door(length,width,height,doorwidth,doorheight,...
+                    floorheight,groundclearance,position,handle)
+                %% door 2 is at front
+                doorwidth=obj.doorwidth;
+                doorheight=obj.doorheight;
+                position=[obj.wheelbase/2+obj.frontoverhang-0.2*(height-groundclearance)-doorwidth/2
+                    0
+                    (height-groundclearance)/2];
+                
+                obj.section_door(length,width,height,doorwidth,doorheight,...
+                    floorheight,groundclearance,position,handle)
+                %% wheel housings
+                % if numaxles=2
+                wheelbase=obj.wheelbase;
+                diameter=vehicle.Chassis.tyrediameter;
+                wheelwidth=vehicle.Chassis.tyrewidth;
+                wheelhousingwidth=wheelwidth+50+vehicle.Chassis.airspringdiameter;
+                position=[wheelbase/2 0 (height-groundclearance)/2];
+                obj.section_housing(width,diameter,wheelwidth,groundclearance,height,floorheight,position,wheelhousingwidth,handle);
+                position=[-wheelbase/2 0 (height-groundclearance)/2];
+                obj.section_housing(width,diameter,wheelwidth,groundclearance,height,floorheight,position,wheelhousingwidth,handle);
+                %% back section
+                position=[-obj.wheelbase/2-obj.rearoverhang+0.2*(height-groundclearance)
+                    0
+                    (height-groundclearance)/2];
+                obj.section_end(length,width,height,groundclearance,position,floorheight,handle)
+                %% sections
+                % section 1
+                length=(wheelbase/2-1.5*diameter/2)-doorwidth/2;
+                if length>0
+                    position=[(wheelbase/2-1.5*diameter/2-length/2),0,(height-groundclearance)/2];
+                    obj.section_window(length,width,height,groundclearance,floorheight,position,handle);
+                    % section 2
+                    position=[-(wheelbase/2-1.5*diameter/2-length/2),0,(height-groundclearance)/2];
+                    obj.section_window(length,width,height,groundclearance,floorheight,position,handle);
+                end
+                % section 3
+                length= obj.rearoverhang-0.2*(height-groundclearance)-1.5*diameter/2;
+                if length>0
+                    position=[(-wheelbase/2-1.5*diameter/2-length/2),0,(height-groundclearance)/2];
+                    obj.section_window(length,width,height,groundclearance,floorheight,position,handle);
+                    
+                end
+                
+                length=obj.length-0.4*(height-groundclearance);
+                position=[ -obj.length/2+(wheelbase/2+obj.frontoverhang)...
+                    width/2-wheelhousingwidth 0];
+                plotstucture_frame(obj,handle,position,length)
+                position=[ -obj.length/2+(wheelbase/2+obj.frontoverhang) ...
+                    -width/2+wheelhousingwidth 0];
+                plotstucture_frame(obj,handle,position,length)
+                
                 
             end
-            
-             length=obj.length-0.4*(height-groundclearance);
-             position=[ -obj.length/2+(wheelbase/2+obj.frontoverhang)...
-                 width/2-wheelhousingwidth 0];
-            plotstucture_frame(obj,handle,position,length)
-              position=[ -obj.length/2+(wheelbase/2+obj.frontoverhang) ...
-                  -width/2+wheelhousingwidth 0];
-            plotstucture_frame(obj,handle,position,length)   
-                 
-                 
-             end
         end
         function [mass,cost]=superstructureestimation(obj)
             
@@ -234,53 +253,55 @@ classdef body
             %
             % cant rail - runs longitudinally on the roof edges
             cantrailvolume=sectionarea*length;
-             cantrailmass=cantrailvolume*density*numcantrails;
+            cantrailmass=cantrailvolume*density*numcantrails;
             
             % waist rail - longitudinally besides the seats
-             waistrailvolume=sectionarea*length;
-             waistrailmass=waistrailvolume*density*numwaistrails;
+            waistrailvolume=sectionarea*length;
+            waistrailmass=waistrailvolume*density*numwaistrails;
             % seat rail
             seatrailvolume=sectionarea*length;
-             seatrailmass=seatrailvolume*density*numseatrails;
+            seatrailmass=seatrailvolume*density*numseatrails;
             
-            % skirt rail 
-             skirtrailvolume=sectionarea*length;
-             skirtrailmass=skirtrailvolume*density*numskirtrails;
-                      
-            %% 
+            % skirt rail
+            skirtrailvolume=sectionarea*length;
+            skirtrailmass=skirtrailvolume*density*numskirtrails;
+            
+            %%
             % A Pillar
             apillarvolume=sectionarea*height;
-             apillarmass=apillarvolume*density*2;
-                  
+            apillarmass=apillarvolume*density*2;
+            
             % Window  vertical pillars
-            intercrossmemberdistance=900/1000; %mm  
+            intercrossmemberdistance=900/1000; %mm
             numcrossmembers=floor(length/intercrossmemberdistance);
             vertpillarvolume=sectionarea*height;
-              vertpillarmass=vertpillarvolume*density*2*numcrossmembers;
-           
+            vertpillarmass=vertpillarvolume*density*2*numcrossmembers;
+            
             
             % Roof arches
             roofarchvolume=sectionarea*width;
-              roofarchmass=roofarchvolume*density*numcrossmembers;
+            roofarchmass=roofarchvolume*density*numcrossmembers;
             
-              %roof rail
-                roofarchvolume=sectionarea*length;
-                lateralcrossmemberdistance=600/1000;
-                numlatcrossmembers=floor(width/lateralcrossmemberdistance);
-              roofrailmass=roofarchvolume*density*numlatcrossmembers;
-              
-              % floor rail
+            %roof rail
+            roofarchvolume=sectionarea*length;
+            lateralcrossmemberdistance=600/1000;
+            numlatcrossmembers=floor(width/lateralcrossmemberdistance);
+            roofrailmass=roofarchvolume*density*numlatcrossmembers;
+            
+            % floor rail
+            intercrossmemberdistance=600/1000; %mm
+            numcrossmembers=floor(length/intercrossmemberdistance);
             floorrailvolume=sectionarea*width;
-              floorrailmass=floorrailvolume*density*numcrossmembers;
+            floorrailmass=floorrailvolume*density*numcrossmembers;
             
-              %floor crossmember
-                floorlatrailvolume=sectionarea*length;
-                lateralcrossmemberdistance=600/1000;
-                numlatcrossmembers=floor(width/lateralcrossmemberdistance);
-              floorlatrailmass=floorlatrailvolume*density*numlatcrossmembers;
-           
-           
-          % 
+            %floor crossmember
+            floorlatrailvolume=sectionarea*length;
+            lateralcrossmemberdistance=600/1000;
+            numlatcrossmembers=floor(width/lateralcrossmemberdistance);
+            floorlatrailmass=floorlatrailvolume*density*numlatcrossmembers;
+            
+            
+            %
             
             mass=roofarchmass+vertpillarmass+apillarmass+skirtrailmass+waistrailmass...
                 +seatrailmass+cantrailmass+roofrailmass+floorrailmass+floorlatrailmass;
@@ -288,7 +309,7 @@ classdef body
                 obj.structure_materialutilisation)*1.53; % cost of superstructure
         end
         function plotstucture_frame(obj,handle,position,vehiclelength)
-%             position =[0 0 0];
+            %             position =[0 0 0];
             length=vehiclelength;
             width= obj.sectionwidth;
             height = obj.sectionheight;
@@ -342,11 +363,15 @@ classdef body
             colr = [1 1 1];
             alph = 0.5;
             length = 1.5*wheeldiameter;
+            bottomsidewallheight=950; %
+            windowheight=0.75*(height-bottomsidewallheight);
+            sidewallheight=height-windowheight-bottomsidewallheight;
+             hw=windowheight;
             %% roof
             % side right surface
             n=10; % points in the fillet radi
             r=0.05*height;
-            h=height/3;
+            h=sidewallheight; %height/3;
             v1=[0.5* length;0.5* width; -0.5* h];
             v2=[-0.5* length;0.5* width;-0.5* h];
             v3=[-0.5* length;0.5* width;(0.5)* h-r];
@@ -380,23 +405,24 @@ classdef body
             rf4Vertices=[fi22,flip(fi21,2),v12];
             rf5Vertices=[v5,v6,v7,v8];
             
-            rf1Vertices=obj.translate(rf1Vertices,[0 0 0.5*h+h/2]);
-            rf2Vertices=obj.translate(rf2Vertices,[0 0 0.5*h+h/2]);
-            rf3Vertices=obj.translate(rf3Vertices,[0 0 0.5*h+h/2]);
-            rf4Vertices=obj.translate(rf4Vertices,[0 0 0.5*h+h/2]);
-            rf5Vertices=obj.translate(rf5Vertices,[0 0 0.5*h+h/2]);
+            rf1Vertices=obj.translate(rf1Vertices,[0 0 0.5*hw+h/2]); % translate to origin 0 0 0
+            rf2Vertices=obj.translate(rf2Vertices,[0 0 0.5*hw+h/2]);
+            rf3Vertices=obj.translate(rf3Vertices,[0 0 0.5*hw+h/2]);
+            rf4Vertices=obj.translate(rf4Vertices,[0 0 0.5*hw+h/2]);
+            rf5Vertices=obj.translate(rf5Vertices,[0 0 0.5*hw+h/2]);
             
             
             %% create bottom surfaces
             % side right surface
             n=10; % points in the fillet radi
             r=0.05*height;
-            h=height/3; % height of right surface
-            l1=0.5*length-0.2*wheeldiameter;
+           
+            h=bottomsidewallheight; %height/3; % height of right surface
+            l1=wheeldiameter/2 +wheeldiameter*.1;%0.5*length-0.2*wheeldiameter/2;
             v1=[0.5* length;0.5* width;(0.5)* h];
             v2=[0.5* length;0.5* width;-(0.5)* h+r];
             v3=[l1;0.5* width;-(0.5)* h+r];
-            v4=[l1;0.5* width;-(0.5)*h+0.25*wheeldiameter];
+            v4=[l1;0.5* width;-(0.5)*h+0.25*wheeldiameter+50];
             
             x= (0.5)* width-r*(1-(cos(linspace(0,pi/2,n))));
             y= -(0.5)* h+r*(1-(sin(linspace(0,pi/2,n))));
@@ -407,17 +433,23 @@ classdef body
             fi14=[-ones(1,n)*l1;x;y];
             fil1=sortrows([fi11  fi12 fi13 fi14]',3,'descend')';
             
-            n=20;
-            
-            x= 1.1*wheeldiameter/2*(cos(linspace(0,pi,n)));
-            y= -(0.5)*h+floorheight+0.9*wheeldiameter/2*(sin(linspace(0,pi,n))); %% would need to modify for large wheel sizes
-            hsg1=[x;0.5* width+0*y;y];
+            n=40;
+            y1= -(0.5*h)-groundclearance+wheeldiameter+50; % height of wheelhousing
+            x1=0.25*wheeldiameter;
+            Vert1=arc2points(0,[v4(1) v4(3)],[x1 y1]);
+          %  Vert11=arc2points(0,[v4(1) v4(3)],[-v4(1) v4(3)]);
+            Vert2=Vert1;
+            Vert2(:,1)=-Vert1(:,1);
+            %x= 1.1*wheeldiameter/2*(cos(linspace(0,pi,n)));
+            %y= -(0.5)*h+floorheight+0.9*wheeldiameter/2*(sin(linspace(0,pi,n))); %% would need to modify for large wheel sizes
+            hsg1=[[Vert1(:,1)' flip(Vert2(:,1)',2)];0.5* width+0*[1:n];...
+                [Vert1(:,2)' flip(Vert2(:,2)',2)]];
             v5=[-l1;0.5* width;-(0.5)*h+0.25*wheeldiameter];
             v6=[-l1;0.5* width;-(0.5)* h+r];
             v8=[-0.5* length;0.5* width;(0.5)* h];
             v7=[-0.5* length;0.5* width;-(0.5)* h+r];
             rwallVertices=[v1,v2,v3,v4,hsg1,v5,v6,v7,v8];
-            rwallVertices=obj.translate(rwallVertices,[0 0 -0.5*h-h/2]);
+            rwallVertices=obj.translate(rwallVertices,[0 0 -0.5*hw-h/2]);
             floorheight=-height/2+floorheight;
             fl1=[0.5*length;0.5* width;floorheight];
             fl2=[0.5*length;-0.5* width;floorheight];
@@ -456,8 +488,8 @@ classdef body
             strip2Vertices=[fi22,[fi22(1,end);-0.5*width+wheelhousingwidth;fi22(3,end)],...
                 [fi21(1,end);-0.5*width+wheelhousingwidth;fi21(3,end)],flip(fi21,2)];
             
-            strip1Vertices=obj.translate(strip1Vertices,[0 0 -0.5*h-h/2]);
-            strip2Vertices=obj.translate(strip2Vertices,[0 0 -0.5*h-h/2]);
+            strip1Vertices=obj.translate(strip1Vertices,[0 0 -0.5*hw-h/2]);
+            strip2Vertices=obj.translate(strip2Vertices,[0 0 -0.5*hw-h/2]);
             
             % 2nd fillet
             fi21=fi13;
@@ -468,13 +500,13 @@ classdef body
                 [fi14(1,end);0.5*width-wheelhousingwidth;fi14(3,end)],flip(fi14,2)];
             strip4Vertices=[fi22,[fi22(1,end);-0.5*width+wheelhousingwidth;fi22(3,end)],...
                 [fi21(1,end);-0.5*width+wheelhousingwidth;fi21(3,end)],flip(fi21,2)];
-            strip3Vertices=obj.translate(strip3Vertices,[0 0 -0.5*h-h/2]);
-            strip4Vertices=obj.translate(strip4Vertices,[0 0 -0.5*h-h/2]);
+            strip3Vertices=obj.translate(strip3Vertices,[0 0 -0.5*hw-h/2]);
+            strip4Vertices=obj.translate(strip4Vertices,[0 0 -0.5*hw-h/2]);
             % wheel housing surface
             hsgv2=hsg1;
             hsgv2(2,:)=hsgv2(2,:)-wheelhousingwidth;
             housing1Vertices=[hsg1,flip(hsgv2,2)];
-            housing1Vertices=obj.translate(housing1Vertices,[0 0 -0.5*h-h/2]);
+            housing1Vertices=obj.translate(housing1Vertices,[0 0 -0.5*hw-h/2]);
             V=[hsg1(:,1),fi12,[hsgv2(1:2,1);fi14(3,end)],[hsgv2(1:2,1);hsg1(3,1)]];
             V1=[-V(1,:);V(2:3,:)];
             V2=[V(1,:);-V(2,:);V(3,:)];
@@ -486,18 +518,19 @@ classdef body
             hsg1(2,:)=-hsg1(2,:);
             hsgv2(2,:)=-hsgv2(2,:)+wheelhousingwidth;
             housing2Vertices=[hsg1,flip(hsgv2,2)];
-            housing2Vertices=obj.translate(housing2Vertices,[0 0 -0.5*h-h/2]);
-            V=obj.translate(V,[0 0 -0.5*h-h/2]);
-            V1=obj.translate(V1,[0 0 -0.5*h-h/2]);
-            V2=obj.translate(V2,[0 0 -0.5*h-h/2]);
-            V3=obj.translate(V3,[0 0 -0.5*h-h/2]);
-            V4=obj.translate(V4,[0 0 -0.5*h-h/2]);
-            V5=obj.translate(V5,[0 0 -0.5*h-h/2]);
+            housing2Vertices=obj.translate(housing2Vertices,[0 0 -0.5*hw-h/2]);
+            
+            V=obj.translate(V,[0 0 -0.5*hw-h/2]);
+            V1=obj.translate(V1,[0 0 -0.5*hw-h/2]);
+            V2=obj.translate(V2,[0 0 -0.5*hw-h/2]);
+            V3=obj.translate(V3,[0 0 -0.5*hw-h/2]);
+            V4=obj.translate(V4,[0 0 -0.5*hw-h/2]);
+            V5=obj.translate(V5,[0 0 -0.5*hw-h/2]);
             
             
             %%
             %% left window
-            h=height/3;
+            h=windowheight; %height/3;
             v1=[0.5* length;-0.5* width; 0.5* h];
             v2=[-0.5* length;-0.5* width;0.5* h];
             v3=[-0.5* length;-0.5* width;-0.5* h];
@@ -518,6 +551,12 @@ classdef body
             
             
             %% plot
+             F1=obj.translate(F1,position); %floor surfaces
+            F2=obj.translate(F2,position);
+            F3=obj.translate(F3,position);
+            F4=obj.translate(F4,position);
+            
+            position(3)=position(3)+hw/2+ bottomsidewallheight- height/2;
             roofVertices=obj.translate(roofVertices,position);
             rwallVertices=obj.translate(rwallVertices,position);
             leftvertices=obj.translate(leftvertices,position);
@@ -540,34 +579,31 @@ classdef body
             rf3Vertices=obj.translate(rf3Vertices,position);
             rf4Vertices=obj.translate(rf4Vertices,position);
             rf5Vertices=obj.translate(rf5Vertices,position);
-            F1=obj.translate(F1,position); %floor surfaces
-            F2=obj.translate(F2,position);
-            F3=obj.translate(F3,position);
-            F4=obj.translate(F4,position);
+           
             alph1=0.8;
-            rightwall=patch(handle,'Faces', [1:28],'Vertices', rwallVertices','FaceColor', colr,'FaceAlpha',alph1);
-            leftwall=patch(handle,'Faces', [1:28],'Vertices', leftvertices','FaceColor', colr,'FaceAlpha',alph1);
+            rightwall=patch(handle,'Faces', [1:48],'Vertices', rwallVertices','FaceColor', colr,'FaceAlpha',alph1);
+            leftwall=patch(handle,'Faces', [1:48],'Vertices', leftvertices','FaceColor', colr,'FaceAlpha',alph1);
             strip1=patch(handle,'Faces', [1:22],'Vertices',strip1Vertices','FaceColor', colr);
             strip2=patch(handle,'Faces', [1:22],'Vertices',strip2Vertices','FaceColor', colr);
             strip3=patch(handle,'Faces', [1:22],'Vertices',strip3Vertices','FaceColor', colr);
             strip4=patch(handle,'Faces', [1:22],'Vertices',strip4Vertices','FaceColor', colr);
             
-            housing1=patch(handle,'Faces', [1:40],'Vertices',housing1Vertices','FaceColor', colr);
-            patch(handle,'Faces', [1:40],'Vertices',housing2Vertices','FaceColor', colr);
+            housing1=patch(handle,'Faces', [1:80],'Vertices',housing1Vertices','FaceColor', colr);
+            patch(handle,'Faces', [1:80],'Vertices',housing2Vertices','FaceColor', colr);
             patch(handle,'Faces', [1:13],'Vertices',V','FaceColor', colr);
             patch(handle,'Faces', [1:13],'Vertices',V1','FaceColor', colr);
             patch(handle,'Faces', [1:13],'Vertices',V2','FaceColor', colr);
             patch(handle,'Faces', [1:13],'Vertices',V3','FaceColor', colr);
             
             
-            patch(handle,'Faces', [1:20],'Vertices',V4','FaceColor', colr);
-            patch(handle,'Faces', [1:20],'Vertices',V5','FaceColor', colr);
+            patch(handle,'Faces', [1:40],'Vertices',V4','FaceColor', colr);
+            patch(handle,'Faces', [1:40],'Vertices',V5','FaceColor', colr);
             
             
             patch(handle,'Faces', [1:4],'Vertices', rf1Vertices','FaceColor', colr);
             patch(handle,'Faces', [1:20],'Vertices', rf2Vertices','FaceColor', colr);
             patch(handle,'Faces', [1:4],'Vertices', rf3Vertices','FaceColor', colr);
-            patch(handle,'Faces', [1:20],'Vertices', rf4Vertices','FaceColor', colr);
+            patch(handle,'Faces', [1:21],'Vertices', rf4Vertices','FaceColor', colr);
             patch(handle,'Faces', [1:4],'Vertices', rf5Vertices','FaceColor', colr);
             
             patch(handle,'Faces', [1:4],'Vertices', F1','FaceColor', colr);
@@ -579,7 +615,37 @@ classdef body
             alph=0.2;
             lwindow=patch(handle,'Faces', lwindowFaces,'Vertices', lwindowVertices','FaceColor', colr,'FaceAlpha',alph);
             rwindow=patch(handle,'Faces', rwindowFaces,'Vertices', rwindowVertices','FaceColor', colr,'FaceAlpha',alph);
-           
+            
+            function vertices=arc2points(a0,c1,c2)
+                % a0 is the initial starting angle in radians % angle is 2 * tan opp/ adj
+                % c1 1st coordinate
+                % c2 2nd coordinate
+                
+                x=[];
+                rad=((c1(1)-c2(1))^2 + (c1(2)-c2(2))^2)/(2*abs((c1(1)-c2(1))*cos(a0)) + 2*abs((c1(2)-c2(2))*sin(a0)));
+                
+                % find centre
+                coeff=-(c1*2)-(-c2*2);
+                coeffc=sum(c1.^2-c2.^2);
+                c(1)=c1(1)-(rad*cos(a0));
+                c(2)=c1(2)-(rad*sin(a0));
+                
+%                 a= 1+(coeff(1)/coeff(2))^2;
+%                 b= 2*-c2(1) +(-(coeffc(1)/coeff(2))-c2(2))*2*-(coeff(1)/coeff(2));
+%                 c= c2(1)^2 + (-(coeffc(1)/coeff(2))-c2(2))^2 - (r^2);
+%                 x=roots([a b c]);
+%                 y=-((coeff(1).*x)+coeffc)/coeff(2);
+                a1=atan((((c1(1)-c2(1))^2-(c1(2)-c2(2))^2)*sin(a0)-2*(((c1(1)-c2(1))*(c1(2)-c2(2)))*cos(a0)))/ ...
+                    (((c1(2)-c2(2))^2-(c1(1)-c2(1))^2)*cos(a0)-2*(((c1(1)-c2(1))*(c1(2)-c2(2)))*sin(a0)))); % end angle
+               % c=[x y];
+                %  hold on
+                x=rad*cos(linspace(a0,a1,20));
+                y=rad*sin(linspace(a0,a1,20));
+                x=x+c(1);
+                y=y+c(2);
+                % plot3(x,x*0,y);
+                vertices=[x' y'];
+            end
             
             
             
@@ -771,8 +837,8 @@ classdef body
                 
                 
                 %  hold on
-                x=r*cos(linspace(0,a1,10));
-                y=r*sin(linspace(0,a1,10));
+                x=r*cos(linspace(a0,a1,10));
+                y=r*sin(linspace(a0,a1,10));
                 x=x+c(2,1);
                 y=y+c(2,2);
                 % plot3(x,x*0,y);
@@ -782,19 +848,15 @@ classdef body
         end
         function section_door(obj,length,width,height,doorwidth,doorheight,...
                 floorheight,groundclearance,position,handle)
-            
-            % length = 1200;
-            % width = 2600;
-            % height= 2800;
-            orient=[0 0 0];
+             orient=[0 0 0];
             length=doorwidth;
             colr = [1 1 1];
             alph = 0.2;
-            % doorwidth=1200;
-            % doorheight=1800;
-            % floorheight=350;
-            % groundclearance=150;
             height=height-groundclearance;
+            bottomsidewallheight=950; %
+            windowheight=0.75*(height-bottomsidewallheight);
+            sidewallheight=height-windowheight-bottomsidewallheight;
+            hw=windowheight;
             % position =[0 0 height/2];
             %% entrance height
             % bottom surface
@@ -959,21 +1021,22 @@ classdef body
             lwindow=patch(handle,'Faces', lwindowFaces,'Vertices', lwindowVertices','FaceColor', colr,'FaceAlpha',alph);
             
             colr=[0 0 0];
+             alph=0.52;
             door=patch(handle,'Faces',doorFaces,'Vertices', doorVertices','FaceColor', colr,'FaceAlpha',alph);
             
             
         end
         function section_window(obj,length,width,height,groundclearance,floorheight,position,handle)
             
-            %length = 1000;
-            %width = 2600;
-            %height= 2800;
-            %groundclearance=150;
             height=height-groundclearance;
             orient=[0 0 0];
             colr = [1 1 1];
             alph = 0.5;
             %position =[2000 0 height/2];
+            bottomsidewallheight=950; %
+            windowheight=0.75*(height-bottomsidewallheight);
+            sidewallheight=height-windowheight-bottomsidewallheight;
+            
             %% floor
             % bottom surface
             v1=[-0.5*length; (0.5)* width;-0.5*height+floorheight];
@@ -983,13 +1046,13 @@ classdef body
             floorVertices=[v1,v2,v3,v4];
             floorfaces=[1 2 3 4];
             
-            
+             
             
             %% create bottom bucket
             % side right surface
             n=10; % points in the fillet radi
             r=0.05*height;
-            h=height/3; % height of right surface
+            h=bottomsidewallheight;%height/3; % height of right surface
             v1=[0.5* length;0.5* width; 0.5* h];
             v2=[-0.5* length;0.5* width;0.5* h];
             v3=[-0.5* length;0.5* width;-(0.5)* h+r];
@@ -1022,19 +1085,19 @@ classdef body
             bot5Vertices=[v5,v6,v7,v8];
             bottomVertices=[v1,v2,v3,v4,fil1,v5,v6,v7,v8,fil2,v9,v10,v11,v12];
             %Vertices=[Vertices fil1' fil2']
-            bot1Vertices=obj.translate(bot1Vertices,[0 0 -0.5*h-h/2]);
-            bot2Vertices=obj.translate(bot2Vertices,[0 0 -0.5*h-h/2]);
-            bot3Vertices=obj.translate(bot3Vertices,[0 0 -0.5*h-h/2]);
-            bot4Vertices=obj.translate(bot4Vertices,[0 0 -0.5*h-h/2]);
-            bot5Vertices=obj.translate(bot5Vertices,[0 0 -0.5*h-h/2]);
+            bot1Vertices=obj.translate(bot1Vertices,[0 0 -0.5*height+h/2]);
+            bot2Vertices=obj.translate(bot2Vertices,[0 0 -0.5*height+h/2]);
+            bot3Vertices=obj.translate(bot3Vertices,[0 0 -0.5*height+h/2]);
+            bot4Vertices=obj.translate(bot4Vertices,[0 0 -0.5*height+h/2]);
+            bot5Vertices=obj.translate(bot5Vertices,[0 0 -0.5*height+h/2]);
             %%
-            bottomVertices=obj.translate(bottomVertices,[0 0 -0.5*h-h/2]);
+            bottomVertices=obj.translate(bottomVertices,[0 0 -0.5*height+h/2]);
             
             %% roof
             % side right surface
             n=10; % points in the fillet radi
             r=0.05*height;
-            h=height/3;
+            h= sidewallheight;%height/3;
             v1=[0.5* length;0.5* width; -0.5* h];
             v2=[-0.5* length;0.5* width;-0.5* h];
             v3=[-0.5* length;0.5* width;(0.5)* h-r];
@@ -1066,14 +1129,14 @@ classdef body
             rf4Vertices=[fi22,flip(fi21,2),v12];
             rf5Vertices=[v5,v6,v7,v8];
             roofVertices=[v1,v2,v3,v4,fil1,v5,v6,v7,v8,fil2,v9,v10,v11,v12];
-            rf1Vertices=obj.translate(rf1Vertices,[0 0 0.5*h+h/2]);
-            rf2Vertices=obj.translate(rf2Vertices,[0 0 0.5*h+h/2]);
-            rf3Vertices=obj.translate(rf3Vertices,[0 0 0.5*h+h/2]);
-            rf4Vertices=obj.translate(rf4Vertices,[0 0 0.5*h+h/2]);
-            rf5Vertices=obj.translate(rf5Vertices,[0 0 0.5*h+h/2]);
+            rf1Vertices=obj.translate(rf1Vertices,[0 0 0.5*height-h/2]);
+            rf2Vertices=obj.translate(rf2Vertices,[0 0 0.5*height-h/2]);
+            rf3Vertices=obj.translate(rf3Vertices,[0 0 0.5*height-h/2]);
+            rf4Vertices=obj.translate(rf4Vertices,[0 0 0.5*height-h/2]);
+            rf5Vertices=obj.translate(rf5Vertices,[0 0 0.5*height-h/2]);
             
             %% left window
-            h=height/3;
+            h=windowheight;
             v1=[0.5* length;-0.5* width; 0.5* h];
             v2=[-0.5* length;-0.5* width;0.5* h];
             v3=[-0.5* length;-0.5* width;-0.5* h];
@@ -1091,6 +1154,11 @@ classdef body
             v4=[0.5* length;0.5* width;-0.5* h];
             rwindowVertices=[v1,v2,v3,v4];
             rwindowFaces=[1 2 3 4];
+            
+            lwindowVertices=obj.translate(lwindowVertices,[0 0 ...
+                0.5*height-(sidewallheight+h/2)]);
+            rwindowVertices=obj.translate(rwindowVertices,[0 0 ... 
+                0.5*height-(sidewallheight+h/2)]);
             
             floorVertices=obj.translate(floorVertices,position);
             lwindowVertices=obj.translate(lwindowVertices,position);

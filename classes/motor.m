@@ -40,6 +40,7 @@ classdef motor
             efficiencymap.eff_T_axis=map.eff_T_axis.*scalefactor;
             efficiencymap.T_max=map.T_max.*scalefactor;
             efficiencymap.power=power;
+            efficiencymap.T_max_n_axis=efficiencymap.T_max_n_axis *60;
         end
          function plotmotor(obj,position,handle)
              diameter=obj.diameter;
