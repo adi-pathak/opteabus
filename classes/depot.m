@@ -126,8 +126,11 @@ classdef depot
                     end
                 else
                    [arcs,var,nodes,timetable]=MDVSP_TSN(obj,vehicle,obj.timetable,depot_parameters{1, 1},depot_parameters{1, 2},vehicle.Energyconsumption,150,1)
-                    obj.blocks=dispatchsimfifo(obj,arcs,var,nodes,timetable,vehicle.Energyconsumption);
-                     obj.dailyvehiclekm=sum([obj.blocks{5,:}]);
+                    [obj.blocks,flag]=dispatchsimfifo(obj,arcs,var,nodes,timetable,vehicle.Energyconsumption,vehicle.Battery.capacity);
+                    if flag==1
+                        return
+                    end
+                    obj.dailyvehiclekm=sum([obj.blocks{5,:}]);
                         dailykm=([obj.blocks{5,:}]);
                         obj.fleetsize=size(obj.blocks,2);
                         meandailykm=obj.dailyvehiclekm/obj.fleetsize;
@@ -1399,7 +1402,7 @@ classdef depot
              z1=z;
              nodes=N;
          end
-         function vehicles=dispatchsimfifo(obj,arcs,var,nodes,timetable,Econs)
+         function [vehicles,flag]=dispatchsimfifo(obj,arcs,var,nodes,timetable,Econs,batterycapacity)
              %% This function decomposes the optimal flow using a heuristic by assigning
              % trips to buses that have the highest state of charge
              %%
@@ -1420,7 +1423,7 @@ classdef depot
              energycharged = timestep*chargerpower; %Charged energy per Schedule.timestep [kWh]
              vehicledemand=zeros(size(usedarcs(usedarcs(:,8)==-1,:),1)*2,2);
              nd=1; % counter for depot departures/arrivals
-             batterycapacity=350; % 270 kwh
+            % batterycapacity=350; % 270 kwh
              %t_load = cell2mat(Demand(1,1));
              %demand_load = cell2mat(Demand(1,2));
              %[t_load, index] = unique(t_load);

@@ -74,8 +74,8 @@ classdef battery
         end
         function emissions=batteryemissions(obj)
             emissions.CO2=(obj.mass*obj.replacements*.63*27.4137)+(obj.mass*obj.replacements*.37*24.5588); % CO2 emissions of cell+housing %24.79118716 %21.937479
-            emissions.DCB=(obj.mass*obj.replacements*.63*29.11545727)+(obj.mass*obj.batterylife*.37*26.27587); % DCB emissions of cell+housing
-            emissions.PM10=(obj.mass*obj.replacements*.63*0.1269670696)+(obj.mass*obj.batterylife*.37*0.050547); % PM-10 
+         %   emissions.DCB=(obj.mass*obj.replacements*.63*29.11545727)+(obj.mass*obj.batterylife*.37*26.27587); % DCB emissions of cell+housing
+          %  emissions.PM10=(obj.mass*obj.replacements*.63*0.1269670696)+(obj.mass*obj.batterylife*.37*0.050547); % PM-10 
         end
         function plotbattery(obj,position,handle)
           %  calculate the battery pack dimensions
