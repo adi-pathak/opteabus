@@ -553,7 +553,7 @@ classdef AEVtoolkit
             options=nsgaopt();
             options.Name='AEV Optimization'; % options name
             options.numObj=2;                % number of objectives
-            options.popsize=500;             % population size
+            options.popsize=5000;             % population size
             options.maxGen=20;              % maximum generations
             options.numVar=size(OptVar,1);                % number of design variables
             options.numCons=1;               % number of constraints
@@ -563,7 +563,7 @@ classdef AEVtoolkit
             options.nameObj={'TCO in SGD/passenger-km'...
                 ,'Property Fulfillment'};
             options.nameVar=OptVar(:,1)';
-            options.useParallel='yes';
+            options.useParallel='no';
             options.poolsize=18;              % Number of parallel workers
             options.objfun=@objectiveFunction;    % Objective function
             options.vectorized = 'yes';
@@ -603,18 +603,60 @@ classdef AEVtoolkit
                 fitness(2)=-fitness(2);
                 fitness(1)=VC.TCO.passengerkm;
                 constraints=0;
-                dlmwrite('res.txt',[vehicleparameters(14) VC.fleetsize ...
-                   VC.gCO2_passengerkm VC.TCO.passengerkm VC.vehicle.Energyconsumption VC.dailyvehiclekm ],'-append');
-            if plot==1
-                h=figure
-                plot(...)
-                    saveas(h,sprintf('FIG%d.png',k)); %
-            end
-                
+                dlmwrite('res.txt',[vehicleparameters VC.fleetsize ...
+                   VC.gCO2_passengerkm ...
+                   VC.TCO.passengerkm ...
+                   VC.vehicle.Energyconsumption ...
+                   VC.dailyvehiclekm 
+                   VC.lines.meanwaitingtime
+                   VC.vehicle.Passengercapacity
+                   VC.vehicle.Range
+                   VC.vehicle.Topspeed
+                   VC.vehicle.Gradeability
+                   VC.vehicle.Unladenmass
+                   VC.vehicle.Grossvehiclemass
+                   
+                   ],'-append');
+               vehicleplot=0;
+             if vehicleplot==1
+                 h=axes;
+                 VC.vehicle.package(h)
+                 frame = getframe(h);
+                 im = frame2im(frame);
+                 [imind,cm] = rgb2ind(im,256); %
+                 filename=strcat('test.gif')
+                 % Write to the GIF File
+                 n=2;
+                 if n == 1
+                     imwrite(imind,cm,filename,'gif', 'Loopcount',inf);
+                 else
+                     imwrite(imind,cm,filename,'gif','WriteMode','append');
+                 end
+             end
+%                 
             catch
                 constraints=010;
                 fitness(1)=4;
                 fitness(2)=2;
+                vehicleplot=0;
+                 if vehicleplot==1 &  ~isempty(VC.vehicle)
+                 h=axes;
+                 h.Visible = 'off';
+                 VC.vehicle.package(h)
+                 frame = getframe(h);
+                 im = frame2im(frame);
+                 [imind,cm] = rgb2ind(im,256); %
+                 filename=strcat('test.gif');
+                
+                 % Write to the GIF File
+                 n=2; % n==1 if file does not exist
+                 if n == 1
+                     imwrite(imind,cm,filename,'gif', 'Loopcount',inf);
+                 else
+                     imwrite(imind,cm,filename,'gif','WriteMode','append');
+                 end
+                  delete(h)
+             end
             end
             %% Add property eval, constraints
             

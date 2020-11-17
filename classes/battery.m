@@ -82,7 +82,7 @@ classdef battery
             if ~isempty(obj.width)
                 if obj.maxcapacity<obj.capacity
                     disp('Battery capacity exceeds available space')
-                  return  
+                  %return  
                 end
                 if obj.position==1
                       packwidth=obj.width;

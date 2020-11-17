@@ -34,6 +34,10 @@ classdef vehicleconcept
         Properties
         Groundclearance=150;
         constraints=0;
+        Range
+        Topspeed
+        Acceleration
+        Gradeability
     end
     properties (Access = private)
         exchangerate=1.56; % EUR to SGD

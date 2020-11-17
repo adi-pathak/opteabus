@@ -76,6 +76,9 @@ classdef depot
                 [vehicle.Energyconsumption,vehicle.Properties.range, ...
                     vehicle.Properties.vmax,vehicle.Properties.amax,...
                     vehicle.Properties.gradeability,vehicle.Energythroughput]=EnergyConsumption(vehicle,driving_cycle,obj.occupancy);
+                vehicle.Range=vehicle.Properties.range;
+                vehicle.Topspeed=vehicle.Properties.vmax;
+                vehicle.Gradeability= vehicle.Properties.gradeability;
                 if isnan(vehicle.Energyconsumption)
                     return
                 end
@@ -125,7 +128,7 @@ classdef depot
                         %  end
                     end
                 else
-                   [arcs,var,nodes,timetable]=MDVSP_TSN(obj,vehicle,obj.timetable,depot_parameters{1, 1},depot_parameters{1, 2},vehicle.Energyconsumption,150,1)
+                   [arcs,var,nodes,timetable]=MDVSP_TSN(obj,vehicle,obj.timetable,depot_parameters.DH.times/60,depot_parameters.DH.distances/1000,vehicle.Energyconsumption,150,1);
                     [obj.blocks,flag]=dispatchsimfifo(obj,arcs,var,nodes,timetable,vehicle.Energyconsumption,vehicle.Battery.capacity);
                     if flag==1
                         return
@@ -148,8 +151,9 @@ classdef depot
                         obj.vehicle=vehicle;
                         obj.property=propertyevaluation(obj);
                 end
-                
+              
             end
+              obj.vehicle=vehicle; % return the object vehicle
         end
         
         function [timetable]=merge(obj,services,terminals)
