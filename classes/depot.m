@@ -23,7 +23,7 @@ classdef depot
         dialogbar
         arcs
         property
-        heuristics=1;
+        heuristics=0;
     end
     
     methods
@@ -147,8 +147,6 @@ classdef depot
                         vehicle=PropertyEvaluation(vehicle,obj);
                         obj.vehicle=vehicle;
                         obj.property=propertyevaluation(obj);
-                       
-                    
                 end
                 
             end
