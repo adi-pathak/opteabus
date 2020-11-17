@@ -100,10 +100,15 @@ classdef vehicleconcept
             assemblycost=man_hours*Vehicle.hourlywages_assembly;
             acquisitioncost=((BOMcost+assemblycost)*Vehicle.markup)/(1+Vehicle.GST); % Ongel 2018
             bomcost.powertrain=(Vehicle.Battery.cost+Vehicle.Powertrain.cost)*Vehicle.exchangerate;
-            bomcost.chassis=(Vehicle.Chassis.axlecost)*Vehicle.exchangerate;
-            bomcost.body=(Vehicle.Body.cost)*Vehicle.exchangerate;
+            bomcost.chassis=(Vehicle.Chassis.axlecost+Vehicle.Chassis.ladderframecost)*Vehicle.exchangerate;
+            bomcost.body=(Vehicle.Body.cost+Vehicle.Body.superstructurecost)*Vehicle.exchangerate;
             bomcost.av=34628;
             bomcost.total=BOMcost;
+            bomcost.interior=Vehicle.Interior.costs;
+            
+            %plot bomcost pie chart 
+         %   pie([ bomcost.powertrain, bomcost.chassis, bomcost.body,bomcost.interior,bomcost.av])
+          %  legend({'powertrain','chassis','body','interior','av'})
         end
         function [batteryreplacements,TCO]=LCC(Vehicle,dailykm,blocks,obj)
             year0_cost=Vehicle.Acquisitioncost+(Vehicle.Acquisitioncost*Vehicle.GST_SG)...
