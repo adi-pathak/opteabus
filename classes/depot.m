@@ -23,7 +23,7 @@ classdef depot
         dialogbar
         arcs
         property
-        heuristics=0;
+        heuristics=1;
     end
     
     methods
@@ -1010,7 +1010,7 @@ classdef depot
                 model.rhs=[b;beq];
                 model.modelsense='min';
                 params.outputflag=1;
-                params.TimeLimit = 250; % 300 seconds to find optimal
+                params.TimeLimit = 120; % 300 seconds to find optimal
                 model.lb    = lb;
                 model.ub    = ub;
                 

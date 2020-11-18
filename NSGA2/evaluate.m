@@ -65,11 +65,12 @@ function [indi, evalTime] = evalIndividual(indi, objfun, varargin)
 %*************************************************************************
 
 tStart = tic;
-[y, cons] = objfun( indi.var, varargin{:} );
+[y, cons,properties] = objfun( indi.var, varargin{:} );
 evalTime = toc(tStart);
 
 % Save the objective values and constraint violations
 indi.obj = y;
+indi.properties=properties;
 if( ~isempty(indi.cons) )
     idx = find( cons );
     if( ~isempty(idx) )

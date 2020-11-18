@@ -561,9 +561,10 @@ classdef AEVtoolkit
             options=nsgaopt();
             options.Name='AEV Optimization'; % options name
             options.numObj=2;                % number of objectives
-            options.popsize=5000;             % population size
-            options.maxGen=20;              % maximum generations
+            options.popsize=1000;             % population size
+            options.maxGen=200;              % maximum generations
             options.numVar=size(OptVar,1);                % number of design variables
+            options.numProp=14;                % number of design variables
             options.numCons=1;               % number of constraints
             options.lb=cell2mat(OptVar(:,2))';              % lower bound
             options.ub=cell2mat(OptVar(:,3))';                % upper bound
@@ -571,13 +572,17 @@ classdef AEVtoolkit
             options.nameObj={'TCO in SGD/passenger-km'...
                 ,'Property Fulfillment'};
             options.nameVar=OptVar(:,1)';
+            options.nameProp={'Fleet Size','CO2/pass-km','SGD/pass-km',...
+                'kWh/km','Daily km','Wait time(min)','Passenger Capacity',...
+                'Range in km','Top Speed in kmph','Gradeability',...
+                'Umass','gvm','acq','tco'};
             options.useParallel='no';
             options.poolsize=18;              % Number of parallel workers
             options.objfun=@objectiveFunction;    % Objective function
             options.vectorized = 'yes';
             %  options.mutation = {'gaussian',0.5,0.2};
             options.plotInterval = 2;            % Plot interval
-          %  options.initfun={@initpop,'populations.txt',1};
+         %  options.initfun={@initpop,'populations.txt',1};
             options.plotInterval=1;
             result=nsga2(options,obj,app.Services,app.depotparameters,app.drivingcycle,app.Opt,app.OptimisationStateTable);
             
@@ -602,7 +607,7 @@ classdef AEVtoolkit
             fitness=y;
             constraints=cons;
         end
-        function [fitness,constraints]=objectiveFunction(vehicleparameters,obj,services,depotparameters,drivingcycle,plothandle,tablehandle)
+        function [fitness,constraints,properties]=objectiveFunction(vehicleparameters,obj,services,depotparameters,drivingcycle,plothandle,tablehandle)
             fitness=[0,0];
             try
                 vehicleparameters(12)=0;
@@ -615,24 +620,46 @@ classdef AEVtoolkit
                    VC.gCO2_passengerkm ...
                    VC.TCO.passengerkm ...
                    VC.vehicle.Energyconsumption ...
-                   VC.dailyvehiclekm 
-                   VC.lines.meanwaitingtime
-                   VC.vehicle.Passengercapacity
-                   VC.vehicle.Range
-                   VC.vehicle.Topspeed
-                   VC.vehicle.Gradeability
-                   VC.vehicle.Unladenmass
-                   VC.vehicle.Grossvehiclemass
-                   
-                   ],'-append');
-               vehicleplot=0;
+                   VC.dailyvehiclekm ...
+                   VC.lines.meanwaitingtime ...
+                   VC.vehicle.Passengercapacity ...
+                   VC.vehicle.Range ...
+                   VC.vehicle.Topspeed ...
+                   VC.vehicle.Gradeability ...
+                   VC.vehicle.Unladenmass ...
+                   VC.vehicle.Grossvehiclemass ... 
+                   VC.vehicle.Acquisitioncost ...
+                   VC.TCO.total],'-append');
+               properties=[VC.fleetsize ...
+                   VC.gCO2_passengerkm ...
+                   VC.TCO.passengerkm ...
+                   VC.vehicle.Energyconsumption ...
+                   VC.dailyvehiclekm ...
+                   VC.lines.meanwaitingtime ...
+                   VC.vehicle.Passengercapacity ...
+                   VC.vehicle.Range ...
+                   VC.vehicle.Topspeed ...
+                   VC.vehicle.Gradeability ...
+                   VC.vehicle.Unladenmass ...
+                   VC.vehicle.Grossvehiclemass ... 
+                   VC.vehicle.Acquisitioncost ...
+                   VC.TCO.total];
+               vehicleplot=1;
              if vehicleplot==1
+                  h2=figure;
                  h=axes;
+                 set(h,'Units','normalized')
+                 set(h,'Position',[0 0 1 1])
+                 % 2) make figure fill screen
+                 set(h2,'Units','normalized')
+                 set(h2,'Position',[0 0 1 1])
+                 h.Visible = 'off';
+                axis([-VC.vehicle.Body.rearoverhang-VC.vehicle.Body.wheelbase VC.vehicle.Body.wheelbase+VC.vehicle.Body.frontoverhang -1500 1500 -150 3000]);
                  VC.vehicle.package(h)
                  frame = getframe(h);
                  im = frame2im(frame);
                  [imind,cm] = rgb2ind(im,256); %
-                 filename=strcat('test.gif')
+                 filename=strcat('test1.gif')
                  % Write to the GIF File
                  n=2;
                  if n == 1
@@ -640,22 +667,32 @@ classdef AEVtoolkit
                  else
                      imwrite(imind,cm,filename,'gif','WriteMode','append');
                  end
+                  delete(h)
+                  delete(h2)
              end
 %                 
             catch
                 constraints=010;
                 fitness(1)=4;
                 fitness(2)=2;
-                vehicleplot=0;
+                 properties=zeros(1,14);
+                vehicleplot=1;
                  if vehicleplot==1 &  ~isempty(VC.vehicle)
+                 h2=figure;
                  h=axes;
-                 h.Visible = 'off';
+                 axis([-VC.vehicle.Body.rearoverhang-VC.vehicle.Body.wheelbase VC.vehicle.Body.wheelbase+VC.vehicle.Body.frontoverhang -1500 1500 -150 3000]); 
+                 set(h,'Units','normalized')
+                 set(h,'Position',[0 0 1 1])
+                 % 2) make figure fill screen
+                 set(h2,'Units','normalized')
+                 set(h2,'Position',[0 0 1 1])
+                 %axis([-6000 6000 -1500 1500 -150 3000])
+                h.Visible = 'off';
                  VC.vehicle.package(h)
-                 frame = getframe(h);
+                 frame = getframe(h2);
                  im = frame2im(frame);
                  [imind,cm] = rgb2ind(im,256); %
-                 filename=strcat('test.gif');
-                
+                 filename=strcat('test1.gif');
                  % Write to the GIF File
                  n=2; % n==1 if file does not exist
                  if n == 1
@@ -664,6 +701,7 @@ classdef AEVtoolkit
                      imwrite(imind,cm,filename,'gif','WriteMode','append');
                  end
                   delete(h)
+                  delete(h2)
              end
             end
             %% Add property eval, constraints
