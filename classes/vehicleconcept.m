@@ -23,6 +23,7 @@ classdef vehicleconcept
         LCAemissions
         TTWemissions
         Energyconsumption
+        Emptyenergyconsumption
         Energythroughput
         Lifetime=17; % 17 years
         TCO
@@ -33,6 +34,10 @@ classdef vehicleconcept
         Properties
         Groundclearance=150;
         constraints=0;
+        Range
+        Topspeed
+        Acceleration
+        Gradeability
     end
     properties (Access = private)
         exchangerate=1.56; % EUR to SGD
@@ -66,7 +71,7 @@ classdef vehicleconcept
             powertraintopology=vehicle_parameters(10);
             totalpower=vehicle_parameters(11);
             powersplit=vehicle_parameters(12);
-            numberofgears=vehicle_parameters(13);
+            gearratio=vehicle_parameters(13);
             batterycapacity=vehicle_parameters(14);
             
             
@@ -74,7 +79,7 @@ classdef vehicleconcept
             Vehicle.Interior=interior(interiorlayout,standingspace,seatwidth,seatpitch,0,Vehicle);%,wheelchairzones)
             Vehicle.Passengercapacity=Vehicle.Interior.passengercapacity;
             Vehicle.Battery=battery(batterycapacity,Vehicle.Body);
-            Vehicle.Powertrain=powertrain(powertraintopology,totalpower,powersplit,numberofgears);
+            Vehicle.Powertrain=powertrain(powertraintopology,totalpower,powersplit,gearratio);
             [Chassis,Vehicle,Vehicle.Grossvehiclemass,Vehicle.Unladenmass...
                 ,Vehicle.Glidermass]=chassis(Vehicle);
             Vehicle.Chassis=Chassis;
@@ -83,8 +88,9 @@ classdef vehicleconcept
         end
         
         function [acquisitioncost,bomcost]=BOM(Vehicle)
-            BOMcost=(Vehicle.Body.cost+Vehicle.Interior.costs+Vehicle.Battery.cost+Vehicle.Powertrain.cost+Vehicle.Chassis.axlecost)*Vehicle.exchangerate;
-            if Vehicle.Body.length==12000
+            BOMcost=(Vehicle.Body.cost+Vehicle.Body.superstructurecost+...
+                +Vehicle.Chassis.axlecost+Vehicle.Chassis.ladderframecost+Vehicle.Interior.costs+Vehicle.Battery.cost+Vehicle.Powertrain.cost)*Vehicle.exchangerate;
+            if Vehicle.Body.length==120003
                 glidercost=210000;
                 BOMcost=(glidercost+Vehicle.Battery.cost+Vehicle.Powertrain.cost)*Vehicle.exchangerate;
             end
@@ -94,10 +100,15 @@ classdef vehicleconcept
             assemblycost=man_hours*Vehicle.hourlywages_assembly;
             acquisitioncost=((BOMcost+assemblycost)*Vehicle.markup)/(1+Vehicle.GST); % Ongel 2018
             bomcost.powertrain=(Vehicle.Battery.cost+Vehicle.Powertrain.cost)*Vehicle.exchangerate;
-            bomcost.chassis=(Vehicle.Chassis.axlecost)*Vehicle.exchangerate;
-            bomcost.body=(Vehicle.Body.cost)*Vehicle.exchangerate;
+            bomcost.chassis=(Vehicle.Chassis.axlecost+Vehicle.Chassis.ladderframecost)*Vehicle.exchangerate;
+            bomcost.body=(Vehicle.Body.cost+Vehicle.Body.superstructurecost)*Vehicle.exchangerate;
             bomcost.av=34628;
             bomcost.total=BOMcost;
+            bomcost.interior=Vehicle.Interior.costs;
+            
+            %plot bomcost pie chart 
+         %   pie([ bomcost.powertrain, bomcost.chassis, bomcost.body,bomcost.interior,bomcost.av])
+          %  legend({'powertrain','chassis','body','interior','av'})
         end
         function [batteryreplacements,TCO]=LCC(Vehicle,dailykm,blocks,obj)
             year0_cost=Vehicle.Acquisitioncost+(Vehicle.Acquisitioncost*Vehicle.GST_SG)...

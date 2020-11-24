@@ -82,6 +82,9 @@ end
 for i = 1:opt.numCons
     fprintf(fid, 'Cons%d\t', i);
 end
+for i = 1:opt.numProp
+     fprintf(fid, '%s\t', opt.nameProp{i});
+end
 fprintf(fid, '\r\n');
 
 for p = 1 : opt.popsize
@@ -93,6 +96,9 @@ for p = 1 : opt.popsize
     end
     for i = 1:opt.numCons
         fprintf(fid, '%g\t', pop(p).cons(i));
+    end
+    for i = 1:opt.numProp
+        fprintf(fid, '%g\t', pop(p).properties(i));
     end
     fprintf(fid, '\r\n');
 end

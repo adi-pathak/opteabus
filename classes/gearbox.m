@@ -11,9 +11,10 @@ classdef gearbox
     methods
         
         
-        function obj=gearbox(numberofgears)
+        function obj=gearbox(ratio)
             obj.cost=300;
             obj.mass=0;
+            obj.ratio=ratio;
         end
        
     end

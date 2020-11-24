@@ -20,8 +20,10 @@ GRIDINT=griddedInterpolant(xd,yd, Motor.eff','linear','none' );
 %     end
 % end
 EFF=GRIDINT(V(2,:).*60, V(1,:));
-EFF(isnan(EFF))=1;
-
+%EFF(isnan(EFF))=1;
+if max(V(1,:))>max(Motor.eff_T_axis)
+    disp(strcat('Max Motor Torque exceeded by ',string(max(V(1,:))-max(Motor.eff_T_axis))))
+end
 P_EL_Motor(1,:)=V(1,:).*V(2,:).*2.*pi./EFF;
 
 if NumofLines>2

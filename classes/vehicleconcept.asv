@@ -23,6 +23,7 @@ classdef vehicleconcept
         LCAemissions
         TTWemissions
         Energyconsumption
+        Emptyenergyconsumption
         Energythroughput
         Lifetime=17; % 17 years
         TCO
@@ -33,6 +34,10 @@ classdef vehicleconcept
         Properties
         Groundclearance=150;
         constraints=0;
+        Range
+        Topspeed
+        Acceleration
+        Gradeability
     end
     properties (Access = private)
         exchangerate=1.56; % EUR to SGD
@@ -66,7 +71,7 @@ classdef vehicleconcept
             powertraintopology=vehicle_parameters(10);
             totalpower=vehicle_parameters(11);
             powersplit=vehicle_parameters(12);
-            numberofgears=vehicle_parameters(13);
+            gearratio=vehicle_parameters(13);
             batterycapacity=vehicle_parameters(14);
             
             
@@ -74,17 +79,18 @@ classdef vehicleconcept
             Vehicle.Interior=interior(interiorlayout,standingspace,seatwidth,seatpitch,0,Vehicle);%,wheelchairzones)
             Vehicle.Passengercapacity=Vehicle.Interior.passengercapacity;
             Vehicle.Battery=battery(batterycapacity,Vehicle.Body);
-            Vehicle.Powertrain=powertrain(powertraintopology,totalpower,powersplit,numberofgears);
+            Vehicle.Powertrain=powertrain(powertraintopology,totalpower,powersplit,gearratio);
             [Chassis,Vehicle,Vehicle.Grossvehiclemass,Vehicle.Unladenmass...
                 ,Vehicle.Glidermass]=chassis(Vehicle);
             Vehicle.Chassis=Chassis;
             [Vehicle.Acquisitioncost,Vehicle.BOMcost]=BOM(Vehicle);
-            Vehicle.constraints=Vehicle.constraintscheck(Vehicle);
+            Vehicle.constraints=Vehicle.constraintscheck();
         end
         
         function [acquisitioncost,bomcost]=BOM(Vehicle)
-            BOMcost=(Vehicle.Body.cost+Vehicle.Interior.costs+Vehicle.Battery.cost+Vehicle.Powertrain.cost+Vehicle.Chassis.axlecost)*Vehicle.exchangerate;
-            if Vehicle.Body.length==12000
+            BOMcost=(Vehicle.Body.cost+Vehicle.Body.superstructurecost+...
+                +Vehicle.Chassis.axlecost+Vehicle.Chassis.ladderframecost+Vehicle.Interior.costs+Vehicle.Battery.cost+Vehicle.Powertrain.cost)*Vehicle.exchangerate;
+            if Vehicle.Body.length==120003
                 glidercost=210000;
                 BOMcost=(glidercost+Vehicle.Battery.cost+Vehicle.Powertrain.cost)*Vehicle.exchangerate;
             end
@@ -94,10 +100,14 @@ classdef vehicleconcept
             assemblycost=man_hours*Vehicle.hourlywages_assembly;
             acquisitioncost=((BOMcost+assemblycost)*Vehicle.markup)/(1+Vehicle.GST); % Ongel 2018
             bomcost.powertrain=(Vehicle.Battery.cost+Vehicle.Powertrain.cost)*Vehicle.exchangerate;
-            bomcost.chassis=(Vehicle.Chassis.axlecost)*Vehicle.exchangerate;
-            bomcost.body=(Vehicle.Body.cost)*Vehicle.exchangerate;
+            bomcost.chassis=(Vehicle.Chassis.axlecost+Vehicle.Chassis.ladderframecost)*Vehicle.exchangerate;
+            bomcost.body=(Vehicle.Body.cost+Vehicle.Body.superstructurecost)*Vehicle.exchangerate;
             bomcost.av=34628;
             bomcost.total=BOMcost;
+            bomcost.interior=Vehicle.Interior.costs;
+            
+            %plot bomcost pie chart 
+            pie([ bomcost.powertrain, bomcost.chassis, bomcost.body,bomcost.interior,bomcost.av],{'powertrain','chassis','body','interior','av'})
         end
         function [batteryreplacements,TCO]=LCC(Vehicle,dailykm,blocks,obj)
             year0_cost=Vehicle.Acquisitioncost+(Vehicle.Acquisitioncost*Vehicle.GST_SG)...
@@ -190,22 +200,34 @@ classdef vehicleconcept
         function flag=constraintscheck(Vehicle)
             % constraint 1 - battery capacity should be less than max
             % battery
-            1
             if Vehicle.Battery.maxcapacity<=Vehicle.Battery.capacity
                 flag=-1;
+                disp('battery too big')
                 return
-            end
+            
             % constraint2 wheelbase should be greater than 0.5 *length
-            if Vehicle.Body.wheelbase<0.5*Vehicle.Body.length
+            elseif Vehicle.Body.wheelbase<0.4*Vehicle.Body.length
                 flag=-1;
+                disp('wheelbase too small')
                 return
-            end
-                
+            
             % constraint 3 wheelbase +tire diameter<vehicle length
-            if (5+Vehicle.Body.wheelbase+(2*Vehicle.Chassis.tyrediameter))>Vehicle.Body.length
-            flag=-1
+            elseif (5+Vehicle.Body.wheelbase+(1.05*Vehicle.Chassis.tyrediameter))>Vehicle.Body.length
+            flag=-1;
+            disp('wheelbase too big')
             return
+            elseif Vehicle.Interior.seatpitch<650 % seat pitch cannot be less than 650
+                flag=-1;
+                disp('legroom too small')
+                return
+            elseif Vehicle.Interior.seatpitch<650 % aisle width cannot be less than 400
+                flag=-1;
+                disp('legroom too small')
+                return
+            else
+                flag=0;
             end
+            
             
             
         end

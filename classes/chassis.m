@@ -3,6 +3,8 @@ classdef chassis
         axleload
         numberofaxles
         axlecost
+        ladderframemass
+        ladderframecost
         mass
         FA
         RA
@@ -23,9 +25,12 @@ classdef chassis
     properties (Access=private)
         passengermass=70; %kg
         sectionheight=60; %100 mm square section
-        sectionwidth=100; %square section for ladder frame;
+        sectionwidth=120; %square section for ladder frame; % source at.govt.nzmedia/1976524/enviro200ev-brochure.pdf
         sectionthickness=6; % 6mm thickness
-        density=7750; %kg/m3 density of steel used in ladder frame
+        steeldensity=7750; %kg/m3 density of steel used in ladder frame
+        steelrawprice=6.67; %EUR/kg
+        structure_materialutilisation=0.52; %production cost Fuchs
+        
     end
     methods
         function [obj,Vehicle,gvm,unladenmass,glidermass]=chassis(Vehicle)
@@ -34,9 +39,11 @@ classdef chassis
             body=Vehicle.Body;
             interior=Vehicle.Interior;
             passengermass=interior.passengercapacity*obj.passengermass;
-            framemass=ladderframemass(obj,body.length,body.width);
+            [framemass,framecost]=ladderframe(obj,body.length,body.width);
+            obj.ladderframemass=framemass;
+            obj.ladderframecost=framecost;
             sprungmass = (battery.mass + powertrain.mass +...
-                body.mass + interior.mass +...
+                body.mass + body.superstructuremass+interior.mass +...
                 passengermass+framemass);                              % Total Axle Load
             
             
@@ -64,10 +71,10 @@ classdef chassis
                 obj.mass= obj.FA.mass + obj.RA.mass;
             end
             obj = obj.axlecosts(AxleLoad);% Chassis cost
-            glidermass = (body.mass + interior.mass +...
+            glidermass = (body.mass + body.superstructuremass+ interior.mass +...
                 obj.mass+ powertrain.mass+framemass);                              % glider mass
             unladenmass=(battery.mass + powertrain.mass +...
-                obj.mass+  body.mass + interior.mass+framemass);
+                obj.mass+  body.mass + body.superstructuremass+ interior.mass+framemass);
             gvm=obj.mass+sprungmass;
             obj=tyresizing(obj,unladenmass,gvm);
            % obj=airspringsizing(obj,unladenmass,gvm);
@@ -77,8 +84,12 @@ classdef chassis
                ,obj.airspringdiameter);
            Vehicle.Battery=Vehicle.Battery.maxstoragecapacity(body.wheelbase,body.width,Vehicle.Body.wheelhousingwidth,...
                Vehicle.Body.rearoverhang,obj.tyrediameter,interior.floorheight,body.sectionwidth,...
-                body.groundclearance);
+               body.sectionheight, body.groundclearance);
         
+        end
+        function cog(body,chassis,battery,powertrain)
+            
+            
         end
         function obj=ZFchassis(obj,type,load)
             if strcmp(type,'FA')
@@ -96,13 +107,6 @@ classdef chassis
                     obj.FA.maxSteering = 60;
                     obj.FA.mass = 527;
                     obj.FA.wheels=2; %number of wheels
-                    %
-                    %                 elseif load > 8200
-                    %                     obj.FA.name = 'AVN 132';
-                    %                     obj.FA.maxLoad = 11500;
-                    %                     obj.FA.maxSteering = 0;
-                    %                     obj.FA.mass = 790;
-                    %                     obj.FA.RearWheelSteering = 0;
                 elseif load < 8500
                     obj.RA.name = 'RL 82 EC';
                     obj.RA.maxLoad = 8200;
@@ -912,10 +916,10 @@ classdef chassis
             
             
         end
-        function mass=ladderframemass(obj,length,width)
+        function [mass,cost]=ladderframe(obj,length,width)
            
             thickness=obj.sectionthickness;
-            intercrossmemberdistance=800; %mm  
+            intercrossmemberdistance=700; %mm  
             numcrossmembers=floor(length/intercrossmemberdistance);
             raillength=length/1000;
             crossraillength=width/1000; %vehicle width
@@ -926,10 +930,11 @@ classdef chassis
                 (width-thickness*2/1000)))*raillength;
             crossrailvolume=((height*width) - ((height-thickness*2/1000)*...
                 (width-thickness*2/1000)))*crossraillength;
-            railmass=railvolume*obj.density;
-            crossrailmass=crossrailvolume*obj.density;
+            railmass=railvolume*obj.steeldensity;
+            crossrailmass=crossrailvolume*obj.steeldensity;
             mass=numrails*railmass + numcrossmembers*crossrailmass;
-            
+            cost= mass*(obj.steelrawprice/...
+                obj.structure_materialutilisation)*1.53; % cost of frame
         end
         function plotchassis(obj,handle,wheelbase,vehiclewidth,groundclearance)
             width=obj.tyrewidth;%274.32; % tire width
@@ -1030,7 +1035,7 @@ classdef chassis
              diameter=obj.airtankdiameter;
              length=obj.airtanklength;
              position(1)=(position(1)>0 )* (position(1)-length/2)+(position(1)<0) * (position(1)+length/2);
-             position(2)=(position(2)>0 )*(position(2)-diameter/2-5)+(position(2)<0) * (position(2)+diameter/2+5);
+             position(2)=(position(2)>0 )*(position(2)-diameter/2-10)+(position(2)<0) * (position(2)+diameter/2+10);
              position(3)=diameter/2+5;
              orient=[pi/2 0 0];
         vo1=[0.5*diameter*cos(linspace(0,pi,40));-0.5*length+0*(linspace(0,pi,40));0.5*diameter*sin(linspace(0,pi,40))];
