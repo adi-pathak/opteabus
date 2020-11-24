@@ -1035,7 +1035,7 @@ classdef chassis
              diameter=obj.airtankdiameter;
              length=obj.airtanklength;
              position(1)=(position(1)>0 )* (position(1)-length/2)+(position(1)<0) * (position(1)+length/2);
-             position(2)=(position(2)>0 )*(position(2)-diameter/2-5)+(position(2)<0) * (position(2)+diameter/2+5);
+             position(2)=(position(2)>0 )*(position(2)-diameter/2-10)+(position(2)<0) * (position(2)+diameter/2+10);
              position(3)=diameter/2+5;
              orient=[pi/2 0 0];
         vo1=[0.5*diameter*cos(linspace(0,pi,40));-0.5*length+0*(linspace(0,pi,40));0.5*diameter*sin(linspace(0,pi,40))];

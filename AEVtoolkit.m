@@ -564,7 +564,6 @@ classdef AEVtoolkit
             options.popsize=1000;             % population size
             options.maxGen=200;              % maximum generations
             options.numVar=size(OptVar,1);                % number of design variables
-            options.numProp=14;                % number of design variables
             options.numCons=1;               % number of constraints
             options.lb=cell2mat(OptVar(:,2))';              % lower bound
             options.ub=cell2mat(OptVar(:,3))';                % upper bound
@@ -572,10 +571,11 @@ classdef AEVtoolkit
             options.nameObj={'TCO in SGD/passenger-km'...
                 ,'Property Fulfillment'};
             options.nameVar=OptVar(:,1)';
+            options.numProp=16;                % number of design variables
             options.nameProp={'Fleet Size','CO2/pass-km','SGD/pass-km',...
                 'kWh/km','Daily km','Wait time(min)','Passenger Capacity',...
                 'Range in km','Top Speed in kmph','Gradeability',...
-                'Umass','gvm','acq','tco'};
+                'Umass','gvm','acq','TCO','Mean Occupancy','Scheduled Trips'};
             options.useParallel='no';
             options.poolsize=18;              % Number of parallel workers
             options.objfun=@objectiveFunction;    % Objective function
@@ -586,26 +586,6 @@ classdef AEVtoolkit
             options.plotInterval=1;
             result=nsga2(options,obj,app.Services,app.depotparameters,app.drivingcycle,app.Opt,app.OptimisationStateTable);
             
-        end
-        function [fitness,constraints]=objectiveFun(x,obj,app)
-            y = [0,0];
-            cons = [0,0];
-            
-            y(1) = x(1);
-            y(2) = (1+x(2)) / x(1);
-            
-            % calculate the constraint violations
-            c = x(2) + 9*x(1) - 6;
-            if(c<0)
-                cons(1) = abs(c);
-            end
-            
-            c = -x(2) + 9*x(1) - 1;
-            if(c<0)
-                cons(2) = abs(c);
-            end
-            fitness=y;
-            constraints=cons;
         end
         function [fitness,constraints,properties]=objectiveFunction(vehicleparameters,obj,services,depotparameters,drivingcycle,plothandle,tablehandle)
             fitness=[0,0];

@@ -28,7 +28,7 @@ classdef motor
             lengthtodiameterratio=0.26+7.02E-5*maxmotorspeed; %revspermin
             obj.diameter=round((motorvolume*4/(pi*lengthtodiameterratio))^(1/3));
             obj.length=round(obj.diameter*lengthtodiameterratio);
-          obj.diameter=250;
+          %obj.diameter=250;
         end
        
         function efficiencymap=scalemap(obj,power,basemap)
