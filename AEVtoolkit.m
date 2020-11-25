@@ -520,7 +520,7 @@ classdef AEVtoolkit
             
         end
         function plotstop(obj,simdata,handle,time)
-            
+            %% This function returns a scatter plot to the handle of the passenger density
               for j=1:size(simdata,2)
                
                 if ~isempty(simdata{j})
@@ -634,8 +634,9 @@ classdef AEVtoolkit
                  set(h2,'Units','normalized')
                  set(h2,'Position',[0 0 1 1])
                  h.Visible = 'off';
-                axis([-VC.vehicle.Body.rearoverhang-VC.vehicle.Body.wheelbase VC.vehicle.Body.wheelbase+VC.vehicle.Body.frontoverhang -1500 1500 -150 3000]);
-                 VC.vehicle.package(h)
+                %axis([-VC.vehicle.Body.rearoverhang-VC.vehicle.Body.wheelbase VC.vehicle.Body.wheelbase+VC.vehicle.Body.frontoverhang -1500 1500 -150 3000]);
+                xlim(h,[-VC.vehicle.Body.rearoverhang-VC.vehicle.Body.wheelbase VC.vehicle.Body.wheelbase+VC.vehicle.Body.frontoverhang]) 
+                VC.vehicle.package(h)
                  frame = getframe(h);
                  im = frame2im(frame);
                  [imind,cm] = rgb2ind(im,256); %

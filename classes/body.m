@@ -381,7 +381,7 @@ classdef body
     
     end
     function section_housing(obj,width,wheeldiameter,wheelwidth,groundclearance,height,floorheight,position,wheelhousingwidth,handle)
-    
+    fh=floorheight;
     height=height-groundclearance;
     orient=[0 0 0];
     colr = [1 1 1];
@@ -596,6 +596,10 @@ classdef body
     V3=obj.translate(V3,position);
     V4=obj.translate(V4,position);
     V5=obj.translate(V5,position);
+    V4(3,1)=fh;
+    V4(3,end)=fh;
+    V5(3,1)=fh;
+    V5(3,end)=fh;
     lwindowVertices=obj.translate(lwindowVertices,position);
     rwindowVertices=obj.translate(rwindowVertices,position);
     rf1Vertices=obj.translate(rf1Vertices,position); %roof surfaces
@@ -706,7 +710,7 @@ classdef body
     fi11= [x;ones(1,n)*0;z];
     fi12=[x;-ones(1,n)*0.5*length;z];
     fil1=sortrows([fi11]',3,'ascend')';
-    fil1=[fil1,[x(end);0; -0.5*height+floorheight]];
+   % fil1=[fil1,[x(end);0; -0.5*height+floorheight]];
     
     
     v5=[fil1(1,end);0.5*width;fil1(3,end)];
@@ -770,8 +774,8 @@ classdef body
     ws=obj.translate(ws',position);
     floor=obj.translate(floor',position);
     floor=[[facel(1:2,1);floor(3,1)],floor,[facer(1:2,1);floor(3,1)]];
-    leftwall=patch(handle,'Faces', [1:32],'Vertices', facel','FaceColor', colr);
-    rightwall=patch(handle,'Faces', [1:32],'Vertices', facer','FaceColor', colr);
+    leftwall=patch(handle,'Faces', [1:31],'Vertices', facel','FaceColor', colr);
+    rightwall=patch(handle,'Faces', [1:31],'Vertices', facer','FaceColor', colr);
     roofpatch=patch(handle,'Faces', facerf,'Vertices', roof','FaceColor', colr,'LineStyle','none');
     bottom=patch(handle,'Faces', facebt,'Vertices', bot','FaceColor', colr,'LineStyle','none');
     floor=patch(handle,'Faces', [1:22],'Vertices', floor','FaceColor', colr);
@@ -1080,7 +1084,7 @@ classdef body
     fi11= [x;ones(1,n)*0;z];
     fi12=[x;-ones(1,n)*0.5*length;z];
     fil1=sortrows([fi11]',3,'ascend')';
-    fil1=[fil1,[x(end);0; -0.5*height+floorheight]];
+    %fil1=[fil1,[x(end);0; -0.5*height+floorheight]];
     
     
     v5=[fil1(1,end);0.5*width;fil1(3,end)];
@@ -1202,8 +1206,8 @@ classdef body
     floor=obj.translate(floor',position);
     
     %floor=[[facel(1:2,1);floor(3,1)],floor,[facer(1:2,1);floor(3,1)]];
-    leftwall=patch(handle,'Faces', [1:55],'Vertices', facel','FaceColor', colr,'FaceAlpha',alph);
-    rightwall=patch(handle,'Faces', [1:55],'Vertices', facer','FaceColor', colr,'FaceAlpha',alph);
+    leftwall=patch(handle,'Faces', [1:54],'Vertices', facel','FaceColor', colr,'FaceAlpha',alph);
+    rightwall=patch(handle,'Faces', [1:54],'Vertices', facer','FaceColor', colr,'FaceAlpha',alph);
     roofpatch=patch(handle,'Faces', facerf,'Vertices', roof','FaceColor', colr,'LineStyle','none');
     bottom=patch(handle,'Faces', facebt,'Vertices', bot','FaceColor', colr,'LineStyle','none');
     % floor=patch('Faces', [1:22],'Vertices', floor','FaceColor', colr);

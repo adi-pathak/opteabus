@@ -1394,7 +1394,7 @@ classdef depot
              params.outputflag=1;
              model.lb    = lb;
              model.ub    = ub*Inf;
-               addpath('C:\gurobi901\win64\matlab')
+               addpath('C:\gurobi902\win64\matlab')
                
              r=gurobi(model,params);
              x=r.x;

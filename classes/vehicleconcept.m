@@ -201,6 +201,9 @@ classdef vehicleconcept
         function flag=constraintscheck(Vehicle)
             % constraint 1 - battery capacity should be less than max
             % battery
+            % groundclearance <250 & >150
+            %floorheight <40 >30
+            %wheelbase/2+foverhang<?
             if Vehicle.Battery.maxcapacity<=Vehicle.Battery.capacity
                 flag=-1;
                 disp('battery too big')

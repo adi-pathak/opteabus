@@ -8,6 +8,7 @@ classdef interior
         gangwaywidth=0.5;
         wheelchairzones=0;
         seatingratio
+        aislewidth
         costs
         mass
         standingpassengers
@@ -27,7 +28,7 @@ classdef interior
         w_door = 1200;
         d_wheelhouse = 767;
         seatlength = 450;
-        seatheight=450;
+        seatheight=450+20;
         backrestheight=500;
         l_seat = 500;
         t_seat = 40;
@@ -75,6 +76,7 @@ classdef interior
                 vehiclewidth=Vehicle.Body.width;
                 interiorwidth=vehiclewidth-200;
                 obj.interiorwidth=interiorwidth;
+              
                 seatgap=obj.w_seat_gap;
                 tgap=obj.t_body;
                 doorwidth=obj.doorwidth;
@@ -133,6 +135,7 @@ classdef interior
                     passengerdensity=1/4;% 4p/m^2
                     aislelength=interiorlength-(seatpitch+seatlength);
                     aislewidth=(interiorwidth-4*(seatwidth+seatgap));
+                    obj.aislewidth=aislewidth;
                     standingarea= aislelength *aislewidth/(1000^2);
                     standingpassengers=floor(standingarea/passengerdensity); %aisle
                     standingarea2=doorwidth*(interiorwidth-aislewidth)/(1000^2); % rear door standing
@@ -191,6 +194,7 @@ classdef interior
                     numseats=numseats1+numseats2+numseats3+numseats4+numseats5;
                     % calculate standing space
                     standingarea= (seatarea3_length) *(seatarea1_length-2*(seatlength+legroom))/(1000^2);
+                    obj.aislewidth=(seatarea1_length-2*(seatlength+legroom));
                     standingpassengers=floor(standingarea/passengerdensity);
                     standingarea2=doorwidth*(seatlength)/(1000^2);
                     standingpassengers2=floor(standingarea2/passengerdensity);
@@ -268,7 +272,7 @@ classdef interior
                     x=cumsum(x); % linear pattern
                     y=-(interiorwidth/2-seatwidth/2);
                     y1=y+seatwidth+seatgap;
-                    z=obj.seatheight+obj.floorheight;
+                    z=obj.seatheight+obj.floorheight-Vehicle.Body.groundclearance;
                     for i=1:numseats2/2
                         position=[x(i) y z];
                         obj.plotseats(position,orientback,obj.seatwidth,obj.seatlength,obj.backrestheight,handle)
@@ -283,7 +287,7 @@ classdef interior
                     x1=cumsum(x1); % linear pattern
                     y=(interiorwidth/2-seatwidth/2);
                     y1=y-seatwidth-seatgap;
-                    z=obj.seatheight+obj.floorheight;
+                    z=obj.seatheight+obj.floorheight-Vehicle.Body.groundclearance;
                     for i=1:numseats3/2
                         position=[x1(i) y z];
                         obj.plotseats(position,orientback,obj.seatwidth,obj.seatlength,obj.backrestheight,handle)
@@ -298,7 +302,7 @@ classdef interior
                     x=cumsum(x); % linear pattern
                     y=(interiorwidth/2-seatwidth/2);
                     y1=y-seatwidth-seatgap;
-                    z=obj.seatheight+obj.floorheight;
+                    z=obj.seatheight+obj.floorheight-Vehicle.Body.groundclearance;
                     for i=1:numseats4/2
                         position=[x(i) y z];
                         obj.plotseats(position,orientback,obj.seatwidth,obj.seatlength,obj.backrestheight,handle)
@@ -351,7 +355,7 @@ classdef interior
                xback=-0.5*interiorlength+50+seatlength/2;
                 xfront=0.5*interiorlength-50-seatlength/2;
                 y=linspace(-seatarea1_length/2+50+seatwidth/2,seatarea1_length/2-50-seatwidth/2,numseats1);
-                z=obj.seatheight+floorheight;
+                z=obj.seatheight+floorheight-Vehicle.Body.groundclearance;
                 orientback=[0 0 0];
                 orientfront=[pi 0 0];
                 for i=1:numseats1
@@ -366,7 +370,7 @@ classdef interior
                 
                 x=linspace(-seatarea3_length/2+seatwidth/2,seatarea3_length/2-seatwidth/2,numseats3);
                 y=-0.5*vehiclewidth+50+seatlength/2;
-                z=obj.seatheight+floorheight;
+                z=obj.seatheight+floorheight-Vehicle.Body.groundclearance;
                 orient=[-pi/2 0 0];
                 for i=1:numseats3
                     position=[x(i) y z];
@@ -380,7 +384,7 @@ classdef interior
                 if numseats4>0
                     x=linspace(seatarea4_length-seatwidth/2+doorwidth/2,doorwidth/2+200+seatwidth/2,numseats4);
                     y=0.5*vehiclewidth-50-seatlength/2;
-                    z=obj.seatheight+floorheight;
+                    z=obj.seatheight+floorheight-Vehicle.Body.groundclearance;
                     orient=[pi/2 0 0];
                     for i=1:numseats4
                         position=[x(i) y z];
