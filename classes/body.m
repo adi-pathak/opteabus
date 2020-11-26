@@ -1205,12 +1205,12 @@ classdef body
     ws=obj.translate(ws',position);
     floor=obj.translate(floor',position);
     
-    %floor=[[facel(1:2,1);floor(3,1)],floor,[facer(1:2,1);floor(3,1)]];
+    floor=[[facel(1:2,1);floor(3,1)],floor,[facer(1:2,1);floor(3,1)]];
     leftwall=patch(handle,'Faces', [1:54],'Vertices', facel','FaceColor', colr,'FaceAlpha',alph);
     rightwall=patch(handle,'Faces', [1:54],'Vertices', facer','FaceColor', colr,'FaceAlpha',alph);
     roofpatch=patch(handle,'Faces', facerf,'Vertices', roof','FaceColor', colr,'LineStyle','none');
     bottom=patch(handle,'Faces', facebt,'Vertices', bot','FaceColor', colr,'LineStyle','none');
-    % floor=patch('Faces', [1:22],'Vertices', floor','FaceColor', colr);
+    floor=patch('Faces', [1:22],'Vertices', floor','FaceColor', colr);
     colr=[0 0 1];
     alph=0.2;
     windShield=patch(handle,'Faces', facews,'Vertices', ws','FaceColor', colr,'FaceAlpha',alph,'LineStyle','none');
