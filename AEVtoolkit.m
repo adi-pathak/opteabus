@@ -5,42 +5,42 @@ classdef AEVtoolkit
     %%
     properties
         GUI;
-        slope=[-0.1333 -0.0667 -0.1333 0.1333 -0.0889 -2 0 0; % Service Performance
-            4.0000   -0.0444   -0.1333    1.5556   -4.0000    1.6444         0         0; % Accessibility
-            0.5000    0.0444   -0.6222    0.4444    0.5000    0.5000    0.0889    0.5000; % Comfort
-            0.5 0.5 0.5 0.5 0.5 0 0 0; % Functionality
-            0.5 0.5 0.5 0 0 0 0 0; % Luxury
-            0.5 4 4 0.5 0.5 0 0 0; % Safety
-            0.1333    3.6444 0.5 0 0 0 0 0; % Lngitudinal Dynamics
+        slope=[-0.3556 -0.0667 -0.1333 0.1333 -0.0889 -4 0 0; % Service Performance - Waitingtime, dwellingtime, seatstandingratio, seatavailablity, occupancy, missedboardings
+            4.0000   -0.0444   -0.1333    1.5556   -4.0000    1.6444         0         0; % Accessibility - Wheelchairzones, entry height, numdoors, doorwidth, lowfloor, aisle width
+            0.2000    0.05   -0.6222    0.4444    0.5000    0.5000    0.015    0.5000; % Comfort - Seatwidth, seatpitch, standing area(P/m2), climate comfort,  ?,visibility, headroom, nvh>>remove
+            5 5 5 5 0.5 0 0 0; % Functionality - HMI Devices, Onboard payment system, Luggage Space, Power outlets
+         %   0.5 0.5 0.5 0 0 0 0 0; % Luxury
+            5 5 5 5 0.5 0 0 0; % Safety
+            0.1333    3.6444 0.5 0 0 0 0 0; % Longitudinal Dynamics, topspeed, acceleration, gradability
             0.5 0.5 0.5 0 0 0 0 0; % Costs
             0.5 0.5 0.5 0 0 0 0 0; % Environment
             ];
-        inflexion=[24 51.75 28.65 22.75 40 0.1 0 0; % Service Performance
-            0.44 110.35 38.75 2 2.0 0.05 0 0; % Accessibility
-            0.5000 930.0000    7.6782   19.4828    0.5000    0.5000  449.6552    0.5000; % Comfort
-            0.5 0.5 0.5 0.5 0.5 0 0 0; % Functionality
-            0.5 0.5 0.5 0 0 0 0 0; % Luxury
-            0.5 0.5 0.3793 0.5 0.5 0 0 0; % Safety
+        inflexion=[12 51.75 28.65 22.75 40 1 0 0; % ervice Performance - Waitingtime, dwellingtime, seatstandingratio, seatavailablity, occupancy, missedboardings
+            0.44 150 38.75 2 2 520 0 0; % Accessibility - Wheelchairzones, entry height, numdoors, doorwidth, lowfloor, aisle width
+            390 650   7.6782   19.4828    0.5000    0.5000  1800   0.5000; %  Comfort - Seatwidth, seatpitch, standing area(P/m2), climate comfort,  ?,visibility, headroom, nvh>>remove
+            0.2 0.2 0.2 0.2 0.5 0 0 0; % % Functionality - HMI Devices, Onboard payment system, Luggage Space, Power outlets
+          %  0.5 0.5 0.5 0 0 0 0 0; % Luxury
+            .2 0.2 0.3793 0.5 0.5 0 0 0; % Safety
             50 0.8 15 0  0         0         0         0; % Lngitudinal Dynamics
             0.5 0.5 0.5 0 0 0 0 0; % Costs
             0.5 0.5 0.5 0 0 0 0 0; % Environment
             ];
-        xl=[0 0 0 0 0 0 0 0; % Service Performance
-            0 0 10 0.5 1 0 0 0; % Accessibility
-            380 660 2 10 0 0 240 0; % Comfort
-            0 0 0 0 0 0 0 0; % Functionality
-            0 0 0 0 0 0 0 0; % Luxury
+        xl=[0 0 0 0 0 0 0 0; % Service Performance - Waitingtime, dwellingtime, seatstandingratio, seatavailablity, occupancy, missedboardings
+            0 0 10 0.5 0 300 0 0; % Accessibility - Wheelchairzones, entry height, numdoors, doorwidth, lowfloor, aisle width
+            360 600 2 10 0 0 1600 0; % Comfort - Seatwidth, seatpitch, standing area(P/m2), climate comfort,  ?,visibility, headroom, nvh>>remove
+            0 0 0 0 0 0 0 0; %  % Functionality - HMI Devices, Onboard payment system, Luggage Space, Power outlets
+         %   0 0 0 0 0 0 0 0; % Luxury
             0 0 0 0 0 0 0 0; % Safety
-            40 10 5 0 0 0 0 0; % Lngitudinal Dynamics
+            40 0 5 0 0 0 0 0; % Lngitudinal Dynamics
             0 0 0 0 0 0 0 0; % Costs
             0 0 0 0 0 0 0 0; % Environment
             ];
-        xu=[60 120 100 60 100 5 0 0; % Service Performance
-            2 300 60 4 2 2 0 0; % Accessibility
-            450 1200 12 25 0.5 0.5 1000 0.5; % Comfort
-            1 1 1 1 0.5 0 0 0; % Functionality
-            0.5 0.5 0.5 0 0 0 0 0; % Luxury
-            0.5 1 1 0.5 0.5 0 0 0; % Safety
+        xu=[40 120 100 60 100 10 0 0; % Service Performance - Waitingtime, dwellingtime, seatstandingratio, seatavailablity, occupancy, missedboardings
+            2 380 60 4 2 950 0 0; % Accessibility - Wheelchairzones, entry height, numdoors, doorwidth, lowfloor, aisle width
+            450 850 12 25 0.5 0.5 2500 0.5; %  Comfort - Seatwidth, seatpitch, standing area(P/m2), climate comfort,  ?,visibility, headroom, nvh>>remove
+            2 2 2 2 0.5 0 0 0; %  % Functionality - HMI Devices, Onboard payment system, Luggage Space, Power outlets
+        %    0.5 0.5 0.5 0 0 0 0 0; % Luxury
+            2 2 2 2 0.5 0 0 0; % Safety - Roll Stability, Security Cameras, Seatbelts, Handles
             120 2 40 0 0 0 0 0; % Lngitudinal Dynamics
             0 0 0 0 0 0 0 0; % Costs
             0.5 1 1 0 0 0 0 0; % Environment
@@ -50,14 +50,14 @@ classdef AEVtoolkit
             'Mean Occupancy in %' 'Missed Boardings' '' ''; % Service Performance
             
             'Wheelchair Zones' 'Entry Height in mm' 'Rated Capacity to Door Ratio'...
-            'Saturation Flow in Pass/s' 'Internal Steps' 'Aisle Width in mm' '' ''; % Accessibility
+            'Saturation Flow in Pass/s' 'Internal Steps' 'Aisle Width in mm' '' ''; % Accessibility - Wheelchairzones, entry height, numdoors, doorwidth, lowfloor, aisle width
             
-            'Seat Width' 'Seat Pitch in mm' 'Standing Area in P/m2' ...
-            'Temperature in deg C' '' 'Window Area in m2' 'Headroom in mm' 'NVH'; % Comfort
+            'Seat Width in mm' 'Seat Pitch in mm' 'Standing Area in P/m2' ...
+            'Temperature in deg C' '' 'Window Area in m2' 'Interior Headroom in mm' 'NVH'; % Comfort
             
-            'Information' 'Cashless Payment' 'Storage Space' 'Power Outlets' 0.5 0 0 0; % Functionality
+            'Information' 'Cashless Payment' 'Storage Space' 'Power Outlets' 0.5 0 0 0; %  % Functionality - HMI Devices, Onboard payment system, Luggage Space, Power outlets
             
-            0 0 0 0 0 0 0 0; % Luxury
+         %   0 0 0 0 0 0 0 0; % Luxury
             
             'Roll Stability' 'Security Cameras' 'Seatbelts' 'Support Handles' 0 0 0 0; % Safety
             
@@ -71,8 +71,8 @@ classdef AEVtoolkit
         catergorical_weights={[0.18204 0.17122 0.17122 0.17122 0.13308 0.17122];... % Service Performance - Waitingtime, dwelltime,traveltime,seatavail,crowdedness,missedboards
             [0.20031 0.15728 0.17293 0.17293 0.14397 0.15258 ]; ... % Wheelchairzones,lowentry,ndoors,doorwidth,numdecks,bicycles
               [0.111619/2 0.111619/2 0.109344/2 0.15548 0.29309 0.087995 0.109344/2 0.119474 ];... %seatcomf,legroom,standcomf,climcomf,ridecomf,visib,headroom,nvh
-             [0.31267 0.35167 0.335655/3 0.335655/3 0.335655/3];... %information,payment,storagespace,usablearea,poweroutlets (luggage,stoller,usbpower)
-             [0.3381 .3327 .32916];... %luxury,privacyseats,privatestandingspace
+             [0.31267 0.35167 0.335655/2 0.335655/2];... %information,payment,storagespace,usablearea,poweroutlets (luggage,stoller,usbpower)
+            % [0.3381 .3327 .32916];... %luxury,privacyseats,privatestandingspace
              [0.27716 0.26703 0.1915285/2 0.2771639 0.1915285/2];... %rollsafety,cameras,seatbelts.supporthandles,illumination
              [0.33 0.33 0.33];... %speed,acceleration,gradability
              [0.33 0.33 0.33];... 
@@ -662,7 +662,7 @@ classdef AEVtoolkit
                 fitness(1)=4;
                 fitness(2)=2;
                  properties=zeros(1,14);
-                vehicleplot=1;
+                vehicleplot=0;
                  if vehicleplot==1 &  ~isempty(VC.vehicle)
                  h2=figure;
                  h=axes;

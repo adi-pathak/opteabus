@@ -22,6 +22,7 @@ classdef interior
         interiorheight
         frontcrashlength=450;
         rearcrashlength=450;
+        doorwidth=1250;
     end
     properties (Access=private)
         passengermass=65;
@@ -40,7 +41,6 @@ classdef interior
         d_spring = 300;
         t_body = 5;
         curvature=50;
-        doorwidth=1250;
         wheelchairzonelength=1250+250;
     end
     methods
@@ -98,6 +98,7 @@ classdef interior
                         numseats=numseats1+numseats2+numseats3+numseats4;
                         % calculate standing space
                         aislewidth=interiorwidth-4*(seatwidth+seatgap);
+                        obj.aislewidth=aislewidth;
                         standingarea= ((seatarea2_length-150) *aislewidth)/(1000^2);
                         standingpassengers=floor(standingarea/passengerdensity);
                         standingarea2=doorwidth*((interiorwidth-aislewidth-2*(seatwidth+seatgap)))/(1000^2);
@@ -132,7 +133,7 @@ classdef interior
                         numseats=numseats1+numseats2+numseats3+numseats4+numseats5;
                     end
                     % calculate standing passengers
-                    passengerdensity=1/4;% 4p/m^2
+                    passengerdensity=1/6;% 4p/m^2
                     aislelength=interiorlength-(seatpitch+seatlength);
                     aislewidth=(interiorwidth-4*(seatwidth+seatgap));
                     obj.aislewidth=aislewidth;
@@ -194,7 +195,7 @@ classdef interior
                     numseats=numseats1+numseats2+numseats3+numseats4+numseats5;
                     % calculate standing space
                     standingarea= (seatarea3_length) *(seatarea1_length-2*(seatlength+legroom))/(1000^2);
-                    obj.aislewidth=(seatarea1_length-2*(seatlength+legroom));
+                    obj.aislewidth=(seatarea1_length-2*(seatlength));
                     standingpassengers=floor(standingarea/passengerdensity);
                     standingarea2=doorwidth*(seatlength)/(1000^2);
                     standingpassengers2=floor(standingarea2/passengerdensity);

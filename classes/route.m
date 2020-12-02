@@ -181,7 +181,7 @@ classdef route
             F_2=max([Pmj./do;Fmj]); % method 2
             %F=max([((A./(do*L)).*((A./(do*L))>Fmj));(((A./(do*L))<Fmj).*(Pmj/c)) ;((((A/(do*L))<Fmj).*((Pmj/c)<Fmj)).*Fmj)]); % ceder pg 77
             F_3=max(([(A./(do*L)); ((Pmj/c)); Fmj])); %method 3
-            F=F_3;
+            F=F_2;
           
             %% timetable generation
             if predefineddepartures>0

@@ -108,11 +108,11 @@ classdef chassis
                     obj.FA.mass = 527;
                     obj.FA.wheels=2; %number of wheels
                 elseif load < 8500
-                    obj.RA.name = 'RL 82 EC';
-                    obj.RA.maxLoad = 8200;
-                    obj.RA.maxSteering = 56;
-                    obj.RA.mass = 482;
-                    obj.RA.RearWheelSteering = 1; 
+                    obj.FA.name = 'RL 82 EC';
+                    obj.FA.maxLoad = 8200;
+                    obj.FA.maxSteering = 56;
+                    obj.FA.mass = 482;
+                    obj.FA.RearWheelSteering = 1; 
                     obj.FA.wheels=2; %number of wheels
                 else
                     obj.FA.name = 'RL 82 A';
@@ -156,6 +156,7 @@ classdef chassis
                     obj.RA.RearWheelSteering = 1;
                     obj.RA.wheels=4; %number of wheels
                 elseif load < 8200
+                    1
                 end
             end
         end

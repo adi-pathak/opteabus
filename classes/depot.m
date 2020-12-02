@@ -82,6 +82,10 @@ classdef depot
                 if isnan(vehicle.Energyconsumption)
                     return
                 end
+                if vehicle.Range<service.routelength*3
+                    disp('Range too small')
+                    return
+                end
                 %% calculate fleet size and find optimal vehicle duties/blocks
                 if ~isempty(dialogbar)
                     dialogbar=waitbar(0.5,dialogbar,'Finding Optimal Vehicle Assignment');
@@ -128,32 +132,33 @@ classdef depot
                         %  end
                     end
                 else
-                   [arcs,var,nodes,timetable]=MDVSP_TSN(obj,vehicle,obj.timetable,depot_parameters.DH.times/60,depot_parameters.DH.distances/1000,vehicle.Energyconsumption,150,1);
-                    [obj.blocks,flag]=dispatchsimfifo(obj,arcs,var,nodes,timetable,vehicle.Energyconsumption,vehicle.Battery.capacity);
+                    [arcs,var,nodes,timetable]=MDVSP_TSN(obj,vehicle,obj.timetable,depot_parameters.DH.times/60,depot_parameters.DH.distances/1000,vehicle.Energyconsumption,150,1);
+                    %[obj.blocks,flag]=dispatchsimfifo(obj,arcs,var,nodes,timetable,vehicle.Energyconsumption,vehicle.Battery.capacity);
+                     [obj.blocks,flag]=dispatchsimhsoc(obj,arcs,var,nodes,timetable,vehicle.Energyconsumption,vehicle.Battery.capacity);
                     if flag==1
                         return
                     end
                     obj.dailyvehiclekm=sum([obj.blocks{5,:}]);
-                        dailykm=([obj.blocks{5,:}]);
-                        obj.fleetsize=size(obj.blocks,2);
-                        meandailykm=obj.dailyvehiclekm/obj.fleetsize;
-                        obj.energy=obj.dailyvehiclekm*vehicle.Energyconsumption;
+                    dailykm=([obj.blocks{5,:}]);
+                    obj.fleetsize=size(obj.blocks,2);
+                    meandailykm=obj.dailyvehiclekm/obj.fleetsize;
+                    obj.energy=obj.dailyvehiclekm*vehicle.Energyconsumption;
+                    
+                    [vehicle.Battery.replacements,vehicle.TCO]=LCC(vehicle,dailykm,obj.blocks,obj);
+                    obj.TCO=vehicle.TCO;
+                    [vehicle.LCAemissions,vehicle.EOLemissions,vehicle.WTTemissions,vehicle.Distributionemissions...
+                        vehicle.Productionemissions,obj.gCO2_km,obj.gCO2_passengerkm]=LCemissions(vehicle,dailykm,obj.dailypassengerkm,obj);
+                    if ~isempty(dialogbar)
+                        dialogbar=waitbar(0.75,dialogbar,'Calculating Life Cycle Emissions');
                         
-                        [vehicle.Battery.replacements,vehicle.TCO]=LCC(vehicle,dailykm,obj.blocks,obj);
-                        obj.TCO=vehicle.TCO;
-                        [vehicle.LCAemissions,vehicle.EOLemissions,vehicle.WTTemissions,vehicle.Distributionemissions...
-                            vehicle.Productionemissions,obj.gCO2_km,obj.gCO2_passengerkm]=LCemissions(vehicle,dailykm,obj.dailypassengerkm,obj);
-                        if ~isempty(dialogbar)
-                            dialogbar=waitbar(0.75,dialogbar,'Calculating Life Cycle Emissions');
-                            
-                        end
-                        vehicle=PropertyEvaluation(vehicle,obj);
-                        obj.vehicle=vehicle;
-                        obj.property=propertyevaluation(obj);
+                    end
+                    vehicle=PropertyEvaluation(vehicle,obj);
+                    obj.vehicle=vehicle;
+                    obj.property=propertyevaluation(obj);
                 end
-              
+                
             end
-              obj.vehicle=vehicle; % return the object vehicle
+            obj.vehicle=vehicle; % return the object vehicle
         end
         
         function [timetable]=merge(obj,services,terminals)
@@ -1169,662 +1174,1074 @@ classdef depot
             toc
             
         end
-         function [arcs,var,nodes,timetable]=MDVSP_TSN(obj,vehicle,timetable,DH,DH_dist,Econs,chargingpower,numdepots)
-             
-             % timetable [origin-stop destination-stop start-time end-time depot]
-             D=numdepots; % list of depots
-             % Create pull in/pull out arcs
-             S=unique([timetable(:,1);timetable(:,2)]); %unique stops
-             numterminals=size(S,1); %number of terminals
-             timetable(:,6)=1:size(timetable,1);
-             %Econs=1.2; % energy consumption
-             %%
-             % for each station i add pull-in arc from depot
-             PI=[];%pull in arcs
-             PO=[];%pull out arcs
-             DH_arcs=[]; % dead head arcs
-             DH_firstarcs=[]; %dead head arcs first match (TSN - Kliewer 2006)
-             DH_firstarcsn=[]; %dead head arcs first match (TSN - Kliewer 2006)
-             DH_latestfirstarcs=[]; %dead head arcs latest first match (TSN - Kliewer 2006)
-             W_arcs=[]; %waiting arcs
-             W_arcsn=[]; %waiting arcs
-             CI=[]; %charging station in arcs
-             CO=[]; %charging station pull out arc
-             N=[]; % no of nodes
-             N1=[1:size(timetable,1)]'; % nodes with outgoing trips
-             N1(:,2:4)=[timetable(:,[1 3 6])];
-             N2=[size(timetable,1)+1:size(timetable,1)*2]';
-             N2(:,2:4)=[timetable(:,[2 4 6])];
-             numdepots=length(D);
-             DHarcs=[];
-             W_arcn=[];
-             dhc=1;
-             triparcs=[];
-             N=[N1;N2];
-             D0_1=[];
-             D0_2=[];
-             D0_3=[];
-             D0_4=[];
-             D0_5=[];
-             Dend=[];
-             minbuses=[.412]; % minimum number of vehicles constrain
-             %%
-             
-             
-             for d=1:length(D)
-                 trip_arcs=[N1(:,1) N2(:,1) timetable(:,3:6)];        % trip arcs
-                 
-                 for z=1:size(trip_arcs,1) % for each trip define pull in/out arcs
-                     PO=[PO;D(d) trip_arcs(z,1) trip_arcs(z,3)-DH(numterminals+d,N1(trip_arcs(z,1),2))./60 trip_arcs(z,3)  ...
-                         DH_dist(numterminals+d,N1(trip_arcs(z,1),2)) ones(size(trip_arcs(z,6),1),1).*d ];
-                     PI=[PI;trip_arcs(z,2) D(d) trip_arcs(z,4) trip_arcs(z,4)+DH(N1(trip_arcs(z,1),2),numterminals+d)./60 ...
-                         DH_dist(N1(trip_arcs(z,1),2),numterminals+d) ones(size(trip_arcs(z,6),1),1).*d ];
-                 end
-                 
-                 for k=1:length(S)
-                     
-                     trips_k=timetable(timetable(:,2)==S(k),:); %arrival at stop k
-                     for i=1:size((trips_k),1) %for each arriving trip at stop k
-                         atimek=trips_k(i,4); % arrival time of trip i at k
-                         %find the first connecting trip of trip i at all stops
-                         for l=1:length(S) %find all the possible deadheading trips with stops l
-                             if l~=k
-                                 trips_l=timetable(timetable(:,1)==S(l),:); % find outgoing trips from stop l
-                                 connectiontime=atimek+DH(k,l)./60; % connection time
-                                 dh_distance=DH_dist(k,l);
-                                 compatible_trips=trips_l(((trips_l(:,3)-connectiontime)>=0),:); % check if compatible in time
-                                 if ~isempty(compatible_trips)
-                                     %                        DH_firstarcsn=[DH_firstarcsn;N2(trips_k(i,6),1)  N1(compatible_trips(1,6),1) connectiontime compatible_trips(1,3) ...
-                                     %                          dh_distance    ];
-                                     
-                                     if dh_distance<DH_dist(k,numterminals+d)+DH_dist(numterminals+d,l) % check if a return trip to the depot is 'cheaper'
-                                         
-                                         DH_firstarcsn=[DH_firstarcsn;N2(trips_k(i,6),1)  N1(compatible_trips(1,6),1) trips_k(i,4) connectiontime ...
-                                             dh_distance    ];
-                                     else
-                                         disp('going to the depot yeaaahh')
-                                     end
-                                 end
-                             end
-                         end
-                         
-                     end
-                     Wn=sortrows(N(N(:,2)==k,:),3); % find all nodes from terminal k (both departure and arrivals)
-                     Wn=[Wn(1:end-1,1) Wn(2:end,1) Wn(1:end-1,3) Wn(2:end,3)];
-                     W_arcsn=[W_arcsn;Wn];
-                 end
-                 
-                 if isempty(Dend)
-                     PO(:,1)=N2(end,1)+1:N2(end,1)+size(N1,1);
-                     PI(:,2)=PO(end,1)+1:PO(end,1)+size(N1,1);
-                 else
-                     PO(:,1)=Dend(:,2)+1:Dend(:,2)+size(N1,1);
-                     PI(:,2)=PO(end,1)+1:PO(end,1)+size(N1,1);
-                 end
-                 Dend=PI(end,:);
-                 Dn=sortrows([PO;PI(:,[2,1,4,3,5,6])],3);
-                 Dn=[Dn(1:end-1,1) Dn(2:end,1) Dn(1:end-1,3) Dn(2:end,3) ...
-                     zeros(size([PO;PI],1)-1,1)  ones(size([PO;PI],1)-1,1).*d];
-                 D1=[max(Dn(:,2))+1 Dn(1,1) 0 Dn(1,3) 0 d];
-                 Dend=[Dn(end,2) max(Dn(:,2))+1 0 Dn(end,4) 0 d];
-                 D0_1=[D0_1;PO ];
-                 D0_2=[D0_2;PI ];
-                 D0_3=[D0_3;Dn ];
-                 D0_4=[D0_4;D1 ];
-                 D0_5=[D0_5;Dend ];
-                 
-                 DHarcs=[DHarcs;DH_firstarcsn ones(size(DH_firstarcsn,1),1).*d];
-                 DH_firstarcsn=[];
-                 W_arcn=[W_arcn; W_arcsn zeros(size(W_arcsn,1),1) ones(size(W_arcsn,1),1).*d];
-                 W_arcsn=[];
-                 triparcs=[triparcs;trip_arcs(:,1:5) ones(size(trip_arcs(:,5),1),1).*d];
-                 trip_arcs=[];
-                 PO=[];
-                 PI=[];
-             end
-             %% add costs
-             PO=D0_1;
-             PI=D0_2;
-             Dn=D0_3;
-             D1=D0_4;
-             Dend=D0_5;
-             PO(:,7)=(PO(:,5))*Econs;  % fixed cost of starting a new vehicle
-             %PO(:,1)=N2(end,1)+PO(:,1);
-             PO(:,8)=-1;
-             %PI(:,2)=N2(end,1)+PI(:,2);
-             PI(:,8)=-2;
-             PI(:,7)=(PI(:,5))*Econs*0.85; % hourly cost of driving
-             Dn(:,7)=(Dn(:,4)-Dn(:,3))*0;  % waiting cost at depot
-             Dn(:,8)=0;
-             D1(:,7)=50000;
-             Dend(:,7)=50;
-             D1(:,8)=-5;
-             Dend(:,8)=5;
-             % D1(:,5)=D1(:,3);
-             % Dend(:,5)=Dend(:,3);
-             triparcs(:,7)=(triparcs(:,5))*Econs; % hourly cost of driving
-             triparcs(:,8)=1;
-             DHarcs(:,7)=(DHarcs(:,5))*Econs*.7; % fixed cost of deadheading
-             W_arcn(:,7)=(W_arcn(:,4)-W_arcn(:,3))*05 + .5; %no cost of waiting
-             DHarcs(:,8)=2; % id of deadhead/wait/trip/pullout
-             W_arcn(:,8)=0;
-             
-             E=[D1;Dn;Dend;PO;PI;triparcs;DHarcs;W_arcn]; % all arcs
-             %E=sortrows(E,3);
-             E(:,9)=1:size(E,1);
-             %% Add constraints
-             N=[N1;N2];
-             Ce1=cell(size(N1,2),2);
-             Ce2=cell(size(N1,2),2);
-             Ce3=[];
-             n=1;
-             tic
-             for i=1:size(N,1) % for each timetabled trip
-                 for j=1:numdepots
-                     colsi=E(E(:,1) == N(i,1) & E(:,6)==j,9); % find outgoing arcs from node i for depot j
-                     colsj=E(E(:,2) == N(i,1) & E(:,6)==j ,9); % find incoming arcs to node i
-                     Ce1{n,1}=colsi;
-                     Ce1{n,2}=ones(size(colsi,1),1)*n;
-                     Ce2{n,1}=colsj;
-                     Ce2{n,2}=ones(size(colsj,1),1)*n;
-                     n=n+1;
-                 end
-                 if i<=size(timetable,1)
-                     id=find(E(:,1)==i & E(:,2)==N2(i,1));
-                     Ce3=[Ce3;id ones(size(id,1),1)*i];
-                 end
-             end
-             
-             Ce1= cell2mat(Ce1);
-             Ce1(:,3)=-ones(size(Ce1,1),1);
-             Ce2= cell2mat(Ce2);
-             Ce2(:,3)=ones(size(Ce2,1),1);
-             Ce3(:,2)=Ce3(:,2)+n-1;
-             Ce3(:,3)=ones(size(Ce3,1),1);
-             
-             de1=zeros(size(N1,2)*numdepots,3);
-             de2=zeros(size(N2,2)*numdepots,3);
-             n=1;
-             Did1= unique(PO(:,1));
-             Did2= unique(PI(:,2));
-             %% depot constraints
-             n1=1;
-             x=1;
-             
-             % add minumum bus constraint
-             for j=1:numdepots
-                 for i=Dn(1,1):D1(end,1)
-                     
-                     colsi=E(E(:,1) == i & E(:,6)==j,9);
-                     colsj=E(E(:,2) == i & E(:,6)==j,9);
-                     de1(n:n+size(colsi,1)-1,:)=[colsi  ones(size(colsi,1),1).*x ones(size(colsi,1),1)];
-                     de2(n1:n1+size(colsj,1)-1,:)=[colsj  ones(size(colsj,1),1).*x -ones(size(colsj,1),1)];
-                     n=n+size(colsi,1);
-                     n1=n1+size(colsj,1);
-                     x=x+1;
-                 end
-                 colsi=E(E(:,8)==-5,9); % depot -vehicle pullout arcs
-                 Aer(j,:)=colsi;
-             end
-             de=[de1;de2];
-             de(:,2)=de(:,2)+Ce3(end,2);
-             Aeq=sparse([Ce1(:,2);Ce2(:,2);Ce3(:,2);de(:,2)],... % rows [out going arcs;incoming arcs; depot arcs]
-                 [Ce1(:,1);Ce2(:,1);Ce3(:,1);de(:,1)], ... % columns / variable ids
-                 [Ce1(:,3);Ce2(:,3);Ce3(:,3);de(:,3)],... % value
-                 de(end,2),size(E,1)); % matrix size rowsxcolumns
-             
-             A=sparse(numdepots,Aer,-1,1,size(E,1));
-             b=[-minbuses];
-             cost=E(:,7);
-             intcon=(1:(length(E))'); % optimization variables are possible arcs
-             
-             intN=(1:length(N))';
-             lb=zeros(size(intcon,2),1);
-             ub=ones(size(intcon,2),1);
-             
-             
-             beq= zeros( size(Aeq,1),1);
-             beq(Ce3(:,2),1)=1;%size(timetable,1);
-             model.vtype=[repmat('I', size(E,1), 1)];
-             model.obj=cost;
-             model.A=[A;Aeq]; % - not efficient/slow speed for large matrices
-             model.sense=[repmat('<', size(A,1), 1);repmat('=', size(Aeq,1), 1)];
-             model.rhs=[b;beq];
-             model.modelsense='min';
-             params.outputflag=1;
-             model.lb    = lb;
-             model.ub    = ub*Inf;
-               addpath('C:\gurobi902\win64\matlab')
-               
-             r=gurobi(model,params);
-             x=r.x;
-             z=E(round(x)>0,:);
-             toc
-             arcs=E;var=x;
-             z1=z;
-             nodes=N;
-         end
-         function [vehicles,flag]=dispatchsimfifo(obj,arcs,var,nodes,timetable,Econs,batterycapacity)
-             %% This function decomposes the optimal flow using a heuristic by assigning
-             % trips to buses that have the highest state of charge
-             %%
-             tic
-             chargerpower=150; %charger power in kW
-             timestep = 1; % timestep is 1 min
-             usedarcs=arcs(var>0,:);
-             x=var(var>0);
-             usedarcs(:,end+1)=x;
-             departures=sortrows([usedarcs(:,1) usedarcs(:,3)  usedarcs(:,6)  usedarcs(:,8)  usedarcs(:,9:10)],2); % nodeid, departime, depotnum, status, arcno
-             arrivals=sortrows([usedarcs(:,2) usedarcs(:,4) usedarcs(:,6)  usedarcs(:,8)  usedarcs(:,9:10)],2); % nodeid, departime, depotnum, status, arcno
-             terminals=unique(nodes(:,2));
-             depots=unique(usedarcs(:,6));
-             events=unique(sortrows([departures(:,2);arrivals(:,2)]));
-             events=(events(2:end,:));
-             %n_tripsteps = round(t_trip/timestep);
-             energyconsumed = timestep*4; %Energy consumed in the Schedule.timestep [kWh]
-             energycharged = timestep*chargerpower; %Charged energy per Schedule.timestep [kWh]
-             vehicledemand=zeros(size(usedarcs(usedarcs(:,8)==-1,:),1)*2,2);
-             nd=1; % counter for depot departures/arrivals
+        function [arcs,var,nodes,timetable]=MDVSP_TSN(obj,vehicle,timetable,DH,DH_dist,Econs,chargingpower,numdepots)
+            
+            % timetable [origin-stop destination-stop start-time end-time depot]
+            D=numdepots; % list of depots
+            % Create pull in/pull out arcs
+            S=unique([timetable(:,1);timetable(:,2)]); %unique stops
+            numterminals=size(S,1); %number of terminals
+            timetable(:,6)=1:size(timetable,1);
+            %Econs=1.2; % energy consumption
+            %%
+            % for each station i add pull-in arc from depot
+            PI=[];%pull in arcs
+            PO=[];%pull out arcs
+            DH_arcs=[]; % dead head arcs
+            DH_firstarcs=[]; %dead head arcs first match (TSN - Kliewer 2006)
+            DH_firstarcsn=[]; %dead head arcs first match (TSN - Kliewer 2006)
+            DH_latestfirstarcs=[]; %dead head arcs latest first match (TSN - Kliewer 2006)
+            W_arcs=[]; %waiting arcs
+            W_arcsn=[]; %waiting arcs
+            CI=[]; %charging station in arcs
+            CO=[]; %charging station pull out arc
+            N=[]; % no of nodes
+            N1=[1:size(timetable,1)]'; % nodes with outgoing trips
+            N1(:,2:4)=[timetable(:,[1 3 6])];
+            N2=[size(timetable,1)+1:size(timetable,1)*2]';
+            N2(:,2:4)=[timetable(:,[2 4 6])];
+            numdepots=length(D);
+            DHarcs=[];
+            W_arcn=[];
+            dhc=1;
+            triparcs=[];
+            N=[N1;N2];
+            D0_1=[];
+            D0_2=[];
+            D0_3=[];
+            D0_4=[];
+            D0_5=[];
+            Dend=[];
+            minbuses=[.412]; % minimum number of vehicles constrain
+            %%
+            
+            
+            for d=1:length(D)
+                trip_arcs=[N1(:,1) N2(:,1) timetable(:,3:6)];        % trip arcs
+                
+                for z=1:size(trip_arcs,1) % for each trip define pull in/out arcs
+                    PO=[PO;D(d) trip_arcs(z,1) trip_arcs(z,3)-DH(numterminals+d,N1(trip_arcs(z,1),2))./60 trip_arcs(z,3)  ...
+                        DH_dist(numterminals+d,N1(trip_arcs(z,1),2)) ones(size(trip_arcs(z,6),1),1).*d ];
+                    PI=[PI;trip_arcs(z,2) D(d) trip_arcs(z,4) trip_arcs(z,4)+DH(N1(trip_arcs(z,1),2),numterminals+d)./60 ...
+                        DH_dist(N1(trip_arcs(z,1),2),numterminals+d) ones(size(trip_arcs(z,6),1),1).*d ];
+                end
+                
+                for k=1:length(S)
+                    
+                    trips_k=timetable(timetable(:,2)==S(k),:); %arrival at stop k
+                    for i=1:size((trips_k),1) %for each arriving trip at stop k
+                        atimek=trips_k(i,4); % arrival time of trip i at k
+                        %find the first connecting trip of trip i at all stops
+                        for l=1:length(S) %find all the possible deadheading trips with stops l
+                            if l~=k
+                                trips_l=timetable(timetable(:,1)==S(l),:); % find outgoing trips from stop l
+                                connectiontime=atimek+DH(k,l)./60; % connection time
+                                dh_distance=DH_dist(k,l);
+                                compatible_trips=trips_l(((trips_l(:,3)-connectiontime)>=0),:); % check if compatible in time
+                                if ~isempty(compatible_trips)
+                                    %                        DH_firstarcsn=[DH_firstarcsn;N2(trips_k(i,6),1)  N1(compatible_trips(1,6),1) connectiontime compatible_trips(1,3) ...
+                                    %                          dh_distance    ];
+                                    
+                                    if dh_distance<DH_dist(k,numterminals+d)+DH_dist(numterminals+d,l) % check if a return trip to the depot is 'cheaper'
+                                        
+                                        DH_firstarcsn=[DH_firstarcsn;N2(trips_k(i,6),1)  N1(compatible_trips(1,6),1) trips_k(i,4) connectiontime ...
+                                            dh_distance    ];
+                                    else
+                                        disp('going to the depot yeaaahh')
+                                    end
+                                end
+                            end
+                        end
+                        
+                    end
+                    Wn=sortrows(N(N(:,2)==k,:),3); % find all nodes from terminal k (both departure and arrivals)
+                    Wn=[Wn(1:end-1,1) Wn(2:end,1) Wn(1:end-1,3) Wn(2:end,3)];
+                    W_arcsn=[W_arcsn;Wn];
+                end
+                
+                if isempty(Dend)
+                    PO(:,1)=N2(end,1)+1:N2(end,1)+size(N1,1);
+                    PI(:,2)=PO(end,1)+1:PO(end,1)+size(N1,1);
+                else
+                    PO(:,1)=Dend(:,2)+1:Dend(:,2)+size(N1,1);
+                    PI(:,2)=PO(end,1)+1:PO(end,1)+size(N1,1);
+                end
+                Dend=PI(end,:);
+                Dn=sortrows([PO;PI(:,[2,1,4,3,5,6])],3);
+                Dn=[Dn(1:end-1,1) Dn(2:end,1) Dn(1:end-1,3) Dn(2:end,3) ...
+                    zeros(size([PO;PI],1)-1,1)  ones(size([PO;PI],1)-1,1).*d];
+                D1=[max(Dn(:,2))+1 Dn(1,1) 0 Dn(1,3) 0 d];
+                Dend=[Dn(end,2) max(Dn(:,2))+1 0 Dn(end,4) 0 d];
+                D0_1=[D0_1;PO ];
+                D0_2=[D0_2;PI ];
+                D0_3=[D0_3;Dn ];
+                D0_4=[D0_4;D1 ];
+                D0_5=[D0_5;Dend ];
+                
+                DHarcs=[DHarcs;DH_firstarcsn ones(size(DH_firstarcsn,1),1).*d];
+                DH_firstarcsn=[];
+                W_arcn=[W_arcn; W_arcsn zeros(size(W_arcsn,1),1) ones(size(W_arcsn,1),1).*d];
+                W_arcsn=[];
+                triparcs=[triparcs;trip_arcs(:,1:5) ones(size(trip_arcs(:,5),1),1).*d];
+                trip_arcs=[];
+                PO=[];
+                PI=[];
+            end
+            %% add costs
+            PO=D0_1;
+            PI=D0_2;
+            Dn=D0_3;
+            D1=D0_4;
+            Dend=D0_5;
+            PO(:,7)=(PO(:,5))*Econs;  % fixed cost of starting a new vehicle
+            %PO(:,1)=N2(end,1)+PO(:,1);
+            PO(:,8)=-1;
+            %PI(:,2)=N2(end,1)+PI(:,2);
+            PI(:,8)=-2;
+            PI(:,7)=(PI(:,5))*Econs*0.85; % hourly cost of driving
+            Dn(:,7)=(Dn(:,4)-Dn(:,3))*0;  % waiting cost at depot
+            Dn(:,8)=0;
+            D1(:,7)=50000;
+            Dend(:,7)=50;
+            D1(:,8)=-5;
+            Dend(:,8)=5;
+            % D1(:,5)=D1(:,3);
+            % Dend(:,5)=Dend(:,3);
+            triparcs(:,7)=(triparcs(:,5))*Econs; % hourly cost of driving
+            triparcs(:,8)=1;
+            DHarcs(:,7)=(DHarcs(:,5))*Econs*.7; % fixed cost of deadheading
+            W_arcn(:,7)=(W_arcn(:,4)-W_arcn(:,3))*05 + .5; %no cost of waiting
+            DHarcs(:,8)=2; % id of deadhead/wait/trip/pullout
+            W_arcn(:,8)=0;
+            
+            E=[D1;Dn;Dend;PO;PI;triparcs;DHarcs;W_arcn]; % all arcs
+            %E=sortrows(E,3);
+            E(:,9)=1:size(E,1);
+            %% Add constraints
+            N=[N1;N2];
+            Ce1=cell(size(N1,2),2);
+            Ce2=cell(size(N1,2),2);
+            Ce3=[];
+            n=1;
+            tic
+            for i=1:size(N,1) % for each timetabled trip
+                for j=1:numdepots
+                    colsi=E(E(:,1) == N(i,1) & E(:,6)==j,9); % find outgoing arcs from node i for depot j
+                    colsj=E(E(:,2) == N(i,1) & E(:,6)==j ,9); % find incoming arcs to node i
+                    Ce1{n,1}=colsi;
+                    Ce1{n,2}=ones(size(colsi,1),1)*n;
+                    Ce2{n,1}=colsj;
+                    Ce2{n,2}=ones(size(colsj,1),1)*n;
+                    n=n+1;
+                end
+                if i<=size(timetable,1)
+                    id=find(E(:,1)==i & E(:,2)==N2(i,1));
+                    Ce3=[Ce3;id ones(size(id,1),1)*i];
+                end
+            end
+            
+            Ce1= cell2mat(Ce1);
+            Ce1(:,3)=-ones(size(Ce1,1),1);
+            Ce2= cell2mat(Ce2);
+            Ce2(:,3)=ones(size(Ce2,1),1);
+            Ce3(:,2)=Ce3(:,2)+n-1;
+            Ce3(:,3)=ones(size(Ce3,1),1);
+            
+            de1=zeros(size(N1,2)*numdepots,3);
+            de2=zeros(size(N2,2)*numdepots,3);
+            n=1;
+            Did1= unique(PO(:,1));
+            Did2= unique(PI(:,2));
+            %% depot constraints
+            n1=1;
+            x=1;
+            
+            % add minumum bus constraint
+            for j=1:numdepots
+                for i=Dn(1,1):D1(end,1)
+                    
+                    colsi=E(E(:,1) == i & E(:,6)==j,9);
+                    colsj=E(E(:,2) == i & E(:,6)==j,9);
+                    de1(n:n+size(colsi,1)-1,:)=[colsi  ones(size(colsi,1),1).*x ones(size(colsi,1),1)];
+                    de2(n1:n1+size(colsj,1)-1,:)=[colsj  ones(size(colsj,1),1).*x -ones(size(colsj,1),1)];
+                    n=n+size(colsi,1);
+                    n1=n1+size(colsj,1);
+                    x=x+1;
+                end
+                colsi=E(E(:,8)==-5,9); % depot -vehicle pullout arcs
+                Aer(j,:)=colsi;
+            end
+            de=[de1;de2];
+            de(:,2)=de(:,2)+Ce3(end,2);
+            Aeq=sparse([Ce1(:,2);Ce2(:,2);Ce3(:,2);de(:,2)],... % rows [out going arcs;incoming arcs; depot arcs]
+                [Ce1(:,1);Ce2(:,1);Ce3(:,1);de(:,1)], ... % columns / variable ids
+                [Ce1(:,3);Ce2(:,3);Ce3(:,3);de(:,3)],... % value
+                de(end,2),size(E,1)); % matrix size rowsxcolumns
+            
+            A=sparse(numdepots,Aer,-1,1,size(E,1));
+            b=[-minbuses];
+            cost=E(:,7);
+            intcon=(1:(length(E))'); % optimization variables are possible arcs
+            
+            intN=(1:length(N))';
+            lb=zeros(size(intcon,2),1);
+            ub=ones(size(intcon,2),1);
+            
+            
+            beq= zeros( size(Aeq,1),1);
+            beq(Ce3(:,2),1)=1;%size(timetable,1);
+            model.vtype=[repmat('I', size(E,1), 1)];
+            model.obj=cost;
+            model.A=[A;Aeq]; % - not efficient/slow speed for large matrices
+            model.sense=[repmat('<', size(A,1), 1);repmat('=', size(Aeq,1), 1)];
+            model.rhs=[b;beq];
+            model.modelsense='min';
+            params.outputflag=1;
+            model.lb    = lb;
+            model.ub    = ub*Inf;
+            addpath('C:\gurobi901\win64\matlab')
+            
+            r=gurobi(model,params);
+            x=r.x;
+            z=E(round(x)>0,:);
+            toc
+            arcs=E;var=x;
+            z1=z;
+            nodes=N;
+        end
+        function [vehicles,flag]=dispatchsimfifo(obj,arcs,var,nodes,timetable,Econs,batterycapacity)
+            %% This function decomposes the optimal flow using a heuristic by assigning
+            % trips to buses that have the highest state of charge
+            %%
+            tic
+            chargerpower=150; %charger power in kW
+            timestep = 1; % timestep is 1 min
+            usedarcs=arcs(var>0,:);
+            x=var(var>0);
+            usedarcs(:,end+1)=x;
+            departures=sortrows([usedarcs(:,1) usedarcs(:,3)  usedarcs(:,6)  usedarcs(:,8)  usedarcs(:,9:10)],2); % nodeid, departime, depotnum, status, arcno
+            arrivals=sortrows([usedarcs(:,2) usedarcs(:,4) usedarcs(:,6)  usedarcs(:,8)  usedarcs(:,9:10)],2); % nodeid, departime, depotnum, status, arcno
+            terminals=unique(nodes(:,2));
+            depots=unique(usedarcs(:,6));
+            events=unique(sortrows([departures(:,2);arrivals(:,2)]));
+            events=(events(2:end,:));
+            %n_tripsteps = round(t_trip/timestep);
+            energyconsumed = timestep*4; %Energy consumed in the Schedule.timestep [kWh]
+            energycharged = timestep*chargerpower; %Charged energy per Schedule.timestep [kWh]
+            vehicledemand=zeros(size(usedarcs(usedarcs(:,8)==-1,:),1)*2,2);
+            nd=1; % counter for depot departures/arrivals
             % batterycapacity=350; % 270 kwh
-             %t_load = cell2mat(Demand(1,1));
-             %demand_load = cell2mat(Demand(1,2));
-             %[t_load, index] = unique(t_load);
-             %t = departures(3,2):timestep: arrivals(end,2); %timevector
-             t=floor(departures(3,2)*60):timestep:round((24+departures(3,2))*60)-1; % until next day first trip
-             % t=sort([t';events]);
-             % t=unique(t);
-             if depots==1
-                 numVehicles=var(1);
-             end
-             Nchargers=400;
-             Usedchargers=0;
-             % Econs=1.2;
-             Econsempty=0.9*Econs;
-             Charging = zeros(numVehicles,4); % charger number, available, vehiclenum, energy charged,
-             Availablechargers = Nchargers;
-             vehicles=cell(6,numVehicles);
-             %Parameter for finding continuum
-             threshold = -100; %Abort threshold for average energy drained at the end of the day
-             iterationcounter = 0;
-             continuous = false;
-             flag=0; % flag if solution is infeasible
+            %t_load = cell2mat(Demand(1,1));
+            %demand_load = cell2mat(Demand(1,2));
+            %[t_load, index] = unique(t_load);
+            %t = departures(3,2):timestep: arrivals(end,2); %timevector
+            t=floor(departures(3,2)*60):timestep:round((24+departures(3,2))*60)-1; % until next day first trip
+            % t=sort([t';events]);
+            % t=unique(t);
+            if depots==1
+                numVehicles=var(1);
+            end
+            Nchargers=400;
+            Usedchargers=0;
+            % Econs=1.2;
+            Econsempty=0.9*Econs;
+            Charging = zeros(numVehicles,4); % charger number, available, vehiclenum, energy charged,
+            Availablechargers = Nchargers;
+            vehicles=cell(6,numVehicles);
+            %Parameter for finding continuum
+            threshold = -100; %Abort threshold for average energy drained at the end of the day
+            iterationcounter = 0;
+            continuous = false;
+            flag=0; % flag if solution is infeasible
             % while not(continuous)
-                 %Preallocate matrices
-                 Ebat = zeros(numVehicles,length(t)); %Amount of energy in battery [kWh]
-                 Driving = zeros(numVehicles,length(t)); %Driving = 1, not-driving = 0
-                 Charging = zeros(numVehicles,length(t)); %Charging = 1, not-charging = 0
-                 vehiclestarted = zeros(numVehicles,length(t));
-                 vehiclesdone = zeros(numVehicles,length(t));
-                 chargestarted = zeros(numVehicles,length(t));
-                 chargedone = zeros(numVehicles,length(t));
-                 %modulenode = zeros(numVehicles,length(t));
-                 locations=zeros(terminals(end)+depots,numVehicles); %,length(t)
-                 queue=zeros(numVehicles,6,terminals(end)+depots);% arrival time, vehicle no, dist travelled, energy discharge, bat capacity, soc
-                 chargingqueue=zeros(Nchargers,6); %vehicle,  charge start time, endtime, energy charged
-                 % Initialize depots with all vehicles
-                 for i=1:depots
-                     locations(terminals(end)+i,:)=ones(numVehicles(1),1);
-                     queue(:,:,terminals(end)+i)=[zeros(numVehicles,1) [1:numVehicles]' zeros(numVehicles,1) zeros(numVehicles,1)...
-                         ones(numVehicles,1)*batterycapacity ones(numVehicles,1)];
-                 end
-                 
-                 for i = 1:length(t)
-                     % check if any departure/arrival/wait event occurs
-                     currentevents=usedarcs(floor(usedarcs(:,3)*60)==t(i),:);
-                     c01=[];
-                     for j=1:size(currentevents,1) % some arcs are used more than once therefore duplicate events to assign correctly
-                         % repeat only arcs that are not waiting at depot
-                         if currentevents(j,1)<=nodes(end,1)
-                             c01=[c01;repmat(currentevents(j,:),currentevents(j,10),1)];
-                         elseif currentevents(j,8)==-1 & currentevents(j,1)>nodes(end,1)% duplicate pullout arcs if used more tahn once
-                             c01=[c01;repmat(currentevents(j,:),currentevents(j,10),1)];
-                         else
-                             c01=currentevents(j,:);
-                         end
-                         if j==size(currentevents,1)
-                             c01=sortrows(c01,8);
-                         end
-                     end
-                     currentevents=c01;
-                     if ~isempty(currentevents)
-                         currentevents=sortrows(currentevents,3);
-                     end
-                     
-                     %for each event
-                     for j = 1:size(currentevents,1)
-                         
-                         if currentevents(j,8)==-1 % if the event is to pull out of depot
-                             %available = find(Driving(:,i)==0); %look for available modules
-                             available= queue(queue(:,2,terminals(end)+currentevents(j,6))~=0,:,...
-                                 terminals(end)+currentevents(j,6));% find available vehicles at location/depot
-                             if isempty(available) % No idling/waiting vehicles
-                                 % Find vehicle with the highest SOC at the charging
-                                 % station
-                                 [~,Index]=max(chargingqueue(:,6)); % find available charger used least
-                                 vehicle = chargingqueue(Index,:); % select vehicle
-                                 vehicle(1)=t(i)/60; % return to depot after disconnection
-                                 % add back to depot queue
-                                 queue(vehicle(1,2),:,end)=vehicle; % remove from queue at current stop
-                                 available=vehicle;
-                                 chargingqueue(Index,:)=0;
-                                 Availablechargers=Availablechargers+1;
-                                 Usedchargers=Usedchargers-1;
-                             end
-                             [~,Index]=max(available(:,4)); % find vehicle with max charge levels
-                             vehicle = available(Index,2);
-                             vehicle= queue(vehicle,:,end);
-                             queue(vehicle(2),:,terminals(end)+currentevents(j,6))=0;
-                             vehicle(1)=currentevents(j,4);
-                             vehicle(3)=currentevents(j,5)+vehicle(3); % distance travelled
-                             vehicle(4)=vehicle(4)-currentevents(j,5)*Econsempty;
-                             vehicle(6)=(vehicle(5)+vehicle(4))/vehicle(5); %SOC
-                             if vehicle(6)<0
-                                 flag=1;
-                             end
-                             % update queue at destination
-                             queue(vehicle(2),:,nodes(currentevents(j,2),2))=vehicle;
-                             % update vehicle
-                             vehicles{1,vehicle(2)}=[vehicles{1,vehicle(2)} currentevents(j,1:2)]; % update used arcs
-                             vehicles{2,vehicle(2)}=[vehicles{2,vehicle(2)} currentevents(j,3:4)]; % update time
-                             vehicles{3,vehicle(2)}=[vehicles{3,vehicle(2)} -1]; % update status
-                             vehicles{4,vehicle(2)}=[vehicles{4,vehicle(2)} currentevents(j,5)]; % update km
-                             vehicles{5,vehicle(2)}=sum(vehicles{4,vehicle(2)}); % total km
-                             vehicles{6,vehicle(2)}=[vehicles{6,vehicle(2)}-currentevents(j,5)*1.2]; % soc
-                             vehicledemand(nd,:)=[t(i) 1];
-                             nd=nd+1;
-                         elseif currentevents(j,8)==-2 % if the event is a pull in
-                             terminal= nodes(currentevents(j,1),2); % terminal of trip departure
-                             % find vehicles available at terminal
-                             available=queue(queue(:,2,terminal)~=0,:,terminal);
-                             available=available(available(:,1)<=currentevents(j,3),:); % vehicles that have arrived before departure time of event j
-                             if isempty(available)
-                                 2
-                             end
-                             [~,Index]=min(available(:,1)); % xx find vehicle with min charge levels xx % send vehicle with the lowest SOC back to depot
-                             vehicle = available(Index,:); % select vehicle
-                             vehicle=queue(vehicle(1,2),:,terminal);
-                             queue(vehicle(1,2),:,terminal)=0; % remove from queue at current stop
-                             vehicle(1)=currentevents(j,4);
-                             vehicle(3)=currentevents(j,5)+vehicle(3); % distance travelled
-                             vehicle(4)=vehicle(4)-currentevents(j,5)*Econsempty+0;
-                             vehicle(6)=(vehicle(5)+vehicle(4))/vehicle(5); %SOC
-                             if vehicle(6)<0
-                                 flag=1;
-                             end
-                             % update queue at destination
-                             queue(vehicle(2),:,terminals(end)+currentevents(j,6))=vehicle;
-                             %
-                             distance=vehicle(1,3)+currentevents(j,5);  % total distance at next stop
-                             charge=vehicle(1,4)-currentevents(j,5)*Econs+0; % charge level at next stop
-                             
-                             
-                             vehicles{1,vehicle(1,2)}=[vehicles{1,vehicle(1,2)} currentevents(j,1:2)]; % update used arcs
-                             vehicles{2,vehicle(1,2)}=[vehicles{2,vehicle(1,2)} currentevents(j,3:4)]; % update time
-                             vehicles{3,vehicle(1,2)}=[vehicles{3,vehicle(1,2)} -2]; % update status
-                             vehicles{4,vehicle(1,2)}=[vehicles{4,vehicle(1,2)} currentevents(j,5) ]; % update km
-                             vehicles{5,vehicle(1,2)}=sum(vehicles{4,vehicle(1,2)}); % total km
-                             vehicles{6,vehicle(1,2)}=[vehicles{6,vehicle(1,2)} charge]; % soc
-                             
-                             vehicledemand(nd,:)=[t(i) -1];
-                             nd=nd+1;
-                             
-                         elseif currentevents(j,8)==1 % if the event is start a timetabled trip
-                             terminal= nodes(currentevents(j,1),2); % terminal of trip departure
-                             % find vehicles available at terminal
-                             available=queue(queue(:,2,terminal)~=0,:,terminal);
-                             available=available(available(:,1)<=currentevents(j,3),:); % vehicles that have arrived before departure time of event j
-                             [~,Index]=min(available(:,1)); % find vehicle waiting the longest
-                             vehicle = available(Index,:); % select vehicle
-                             vehicle=queue(vehicle(1,2),:,terminal);
-                             queue(vehicle(1,2),:,terminal)=0; % remove from queue at current stop
-                             % update queue at destination
-                             distance=vehicle(1,3)+currentevents(j,5);  % total distance at next stop
-                             charge=vehicle(1,4)-currentevents(j,5)*Econs; % charge level at next stop
-                             vehicle(1)=currentevents(j,4);
-                             vehicle(3)=distance; % distance travelled
-                             vehicle(4)=charge;
-                             vehicle(6)=(vehicle(5)+vehicle(4))/vehicle(5); %SOC
-                             if vehicle(6)<0
-                                 flag=1;
-                             end
-                             
-                             queue(vehicle(1,2),:,nodes(currentevents(j,2),2))=vehicle;
-                             endind= find(t==currentevents(j,4)); % endtime of event
-                             Driving(vehicle(1,2),i:endind) = 1; %Start this module on a trip
-                             laststarted(vehicle(1,2)) = i; %Mark point for checking which modules are done driving
-                             vehiclestarted(vehicle(1,2),i:endind) = 1; %Mark point for plotting markers
-                             vehicles{1,vehicle(1,2)}=[vehicles{1,vehicle(1,2)} currentevents(j,1:2)]; % update used arcs
-                             vehicles{2,vehicle(1,2)}=[vehicles{2,vehicle(1,2)} currentevents(j,3:4)]; % update time
-                             vehicles{3,vehicle(1,2)}=[vehicles{3,vehicle(1,2)} 1]; % update status
-                             vehicles{4,vehicle(1,2)}=[vehicles{4,vehicle(1,2)} currentevents(j,5)]; % update km
-                             vehicles{5,vehicle(1,2)}=sum(vehicles{4,vehicle(1,2)}); % total km
-                             vehicles{6,vehicle(1,2)}=[vehicles{6,vehicle(1,2)} charge]; % soc
-                             
-                         elseif currentevents(j,8)==2 % if the event is to deadhead
-                             terminal= nodes(currentevents(j,1),2); % terminal of trip departure
-                             % find vehicles available at terminal
-                             available=queue(queue(:,2,terminal)~=0,:,terminal);
-                             available=available(available(:,1)<=currentevents(j,3),:); % vehicles that have arrived before departure time of event j
-                             [~,Index]=min(available(:,4)); % find vehicle that arrived first
-                             vehicle = available(Index,:); % select vehicle
-                             vehicle=queue(vehicle(1,2),:,terminal);
-                             queue(vehicle(1,2),:,terminal)=0; % remove from queue at current stop
-                             % update queue at destination
-                             distance=vehicle(1,3)+currentevents(j,5);  % total distance at next stop
-                             charge=vehicle(1,4)-currentevents(j,5)*Econsempty; % charge level at next stop
-                             vehicle(1)=currentevents(j,4);
-                             vehicle(3)=distance; % distance travelled
-                             vehicle(4)=charge;
-                             vehicle(6)=(vehicle(5)+vehicle(4))/vehicle(5); %SOC
-                             if vehicle(6)<0
-                                 flag=1;
-                             end
-                             
-                             queue(vehicle(1,2),:,nodes(currentevents(j,2),2))=vehicle;
-                             endind= find(t==currentevents(j,4)); % endtime of event
-                             Driving(vehicle(1,2),i:endind) = 1; %Start this module on a trip
-                             laststarted(vehicle(1,2)) = i; %Mark point for checking which modules are done driving
-                             vehiclestarted(vehicle(1,2),i:endind) = 1; %Mark point for plotting markers
-                             vehicles{1,vehicle(1,2)}=[vehicles{1,vehicle(1,2)} currentevents(j,1:2)]; % update used arcs
-                             vehicles{2,vehicle(1,2)}=[vehicles{2,vehicle(1,2)} currentevents(j,3:4)]; % update time
-                             vehicles{3,vehicle(1,2)}=[vehicles{3,vehicle(1,2)} 2]; % update status
-                             vehicles{4,vehicle(1,2)}=[vehicles{4,vehicle(1,2)} currentevents(j,5)]; % update km
-                             vehicles{5,vehicle(1,2)}=sum(vehicles{4,vehicle(1,2)}); % total km
-                             vehicles{6,vehicle(1,2)}=[vehicles{6,vehicle(1,2)} charge]; % soc
-                             
-                         elseif currentevents(j,8)==0 % if the event is to keep waiting
-                             
-                             if currentevents(j,1)<=nodes(end,1) % if the waiting event is not at the depot
-                                 
-                                 terminal= nodes(currentevents(j,1),2); % terminal of trip departure
-                                 % find vehicles available at terminal
-                                 available=queue(queue(:,2,terminal)~=0,:,terminal);
-                                 available=available(available(:,1)<=currentevents(j,3),:); % vehicles that have arrived before departure time of event j
-                                 if size(available,1)>1
-                                     2;
-                                 end
-                                 [~,Index]=max(available(:,4)); % find vehicle that has the least soc
-                                 vehicle = available(Index,:); % select vehicle
-                                 vehicle=queue(vehicle(1,2),:,terminal);
-                                 queue(vehicle(1,2),:,terminal)=0; % remove from queue at current stop
-                                 % update queue at destination
-                                 distance=vehicle(1,3)+currentevents(j,5);  % total distance at next stop
-                                 charge=vehicle(1,4)-currentevents(j,5)*Econs; % charge level at next stop
-                                 % vehicle(1)=currentevents(j,4);
-                                 vehicle(3)=distance; % distance travelled
-                                 vehicle(4)=charge;
-                                 vehicle(6)=(vehicle(5)+vehicle(4))/vehicle(5); %SOC
-                                 queue(vehicle(1,2),:,nodes(currentevents(j,2),2))=vehicle;
-                                 if vehicle(6)<0
-                                     flag=1;
-                                 end
-                                 
-                                 % if no charging:
-                                 vehicles{1,vehicle(1,2)}=[vehicles{1,vehicle(1,2)} currentevents(j,1:2)]; % update used arcs
-                                 vehicles{2,vehicle(1,2)}=[vehicles{2,vehicle(1,2)} currentevents(j,3:4)]; % update time
-                                 vehicles{3,vehicle(1,2)}=[vehicles{3,vehicle(1,2)} 3]; % update status
-                                 vehicles{4,vehicle(1,2)}=[vehicles{4,vehicle(1,2)} currentevents(j,5)]; % update km
-                                 vehicles{5,vehicle(1,2)}=sum(vehicles{4,vehicle(1,2)}); % total km
-                             end
-                             
-                             
-                         elseif currentevents(j,8)==5 % if the event is to end service
-                             []; % do nothing - make sure all vehicles return to depot
-                         end
-                         
-                     end
-                     
-                     %% assign vehicles to available chargers
-                     availablevehicles=queue(queue(:,2,end)~=0,:,end);
-                     availablevehicles=availablevehicles(availablevehicles(:,6)...
-                         <1,:);
-                     if Availablechargers>0 & size(availablevehicles,1)>0 % if there is a charger available and vehicle needs charging
-                         if size(availablevehicles,1)==1
-                             
-                             Availablechargers=Availablechargers-1; % connect vehicle to charger
-                             Usedchargers=Nchargers-Availablechargers;
-                             [~,Index]=min(chargingqueue(:,1)); % find available charger used least
-                             % find vehicle with lowest SOC to connect to charger
-                             vehicle=availablevehicles;
-                             queue(vehicle(2),:,end)=0; %remove vehicle from queue at depot
-                             chargingqueue(Index,1)=t(i)/60 + 0; % charging start time instantaneous connection
-                             chargingqueue(Index,2)=vehicle(2); % vehicle num
-                             chargingqueue(Index,3)=vehicle(3); % vehicle distance travelled
-                             chargingqueue(Index,4)=vehicle(4); % current charge level
-                             chargingqueue(Index,5)=vehicle(5); % battery capacity level
-                             chargingqueue(Index,6)=vehicle(6); % soc level
-                             
-                             
-                             
-                         else % if more than one vehicle needs to be charged
-                             
-                             if size(availablevehicles,1)<=Availablechargers
-                                 for ii=1:size(availablevehicles,1)
-                                     Availablechargers=Availablechargers-1; % connect vehicle to charger
-                                     Usedchargers=Nchargers-Availablechargers;
-                                     [~,Index]=min(chargingqueue(:,1)); % find available charger
-                                     % all vehicles in the queue can be connected to a charger
-                                     vehicle=availablevehicles(ii,:);
-                                     queue(vehicle(2),:,end)=0; %remove vehicle from queue at depot
-                                     chargingqueue(Index,1)=t(i)/60+ 0; % charging start time instantaneous connection
-                                     chargingqueue(Index,2)=vehicle(2); % vehicle num
-                                     chargingqueue(Index,3)=vehicle(3); % vehicle distance travelled
-                                     chargingqueue(Index,4)=vehicle(4); % current charge level
-                                     chargingqueue(Index,5)=vehicle(5); % battery capacity level
-                                     chargingqueue(Index,6)=vehicle(6); % soc level
-                                     
-                                 end
-                                 
-                             else % if more vehicles need to be charged than available chargers
-                                 % find vehicles withh the lowest soc
-                                 for ii=1:Availablechargers % for each available charger connect vehicle with the lowest SOC
-                                     Availablechargers=Availablechargers-1; % connect vehicle to charger
-                                     Usedchargers=Nchargers-Availablechargers;
-                                     [~,Index]=min(chargingqueue(:,1)); % find available charger
-                                     % find vehicle with lowest SOC to connect to charger
-                                     [~,Index1]=min(availablevehicles(:,4)); % xx find vehicle with min charge levels xx % send vehicle with the lowest SOC back to depot
-                                     vehicle = availablevehicles(Index1,:); % select vehicle
-                                     queue(vehicle(2),:,end)=0; %remove vehicle from queue at depot
-                                     chargingqueue(Index,1)=t(i)/60+ 0; % charging start time instantaneous connection
-                                     chargingqueue(Index,2)=vehicle(2); % vehicle num
-                                     chargingqueue(Index,3)=vehicle(3); % vehicle distance travelled
-                                     chargingqueue(Index,4)=vehicle(4); % current charge level
-                                     chargingqueue(Index,5)=vehicle(5); % battery capacity level
-                                     chargingqueue(Index,6)=vehicle(6); % soc level
-                                     
-                                 end
-                             end
-                         end
-                     end
-                     % update amount charged to the vehicles until the next time step
-                     if i<length(t-1) & Usedchargers>=0
-                         %  find time difference until next time step
-                         t_step=t(i+1)-t(i);
-                         energycharged=t_step*chargerpower/60; % kwh in 1 min
-                         chargedemand(i)=energycharged*Usedchargers;
-                         chargingqueue(chargingqueue(:,2)>0,4)=...
-                             chargingqueue(chargingqueue(:,2)>0,4)+energycharged;
-                         chargingqueue(:,6)=(chargingqueue(:,5)+chargingqueue(:,4))./...
-                             chargingqueue(:,5); % update SOC
-                         % stop charging vehicles that have completed
-                         donecharging=chargingqueue(chargingqueue(:,6)>=1);
-                         
-                         if size(donecharging,1)>0
-                             for ii=1:size(donecharging)
-                                 [~,Index]=max(chargingqueue(:,6)); % find available charger used least
-                                 vehicle = chargingqueue(Index,:); % select vehicle
-                                 vehicle(1)=t(i+1)+5/60; % return to depot after disconnection
-                                 vehicle(4)=0;
-                                 vehicle(6)=1;
-                                 % add back to depot queue
-                                 queue(vehicle(1,2),:,end)=vehicle; % remove from queue at current stop
-                                 chargingqueue(Index,:)=0;
-                                 Availablechargers=Availablechargers+1;
-                                 Usedchargers=Usedchargers-1;
-                             end
-                         end
-                         
-                     end
-                     currentevents=[];
-                     if flag==1
-                         disp('No feasible solution')
-                         break
-                     end
-                 end
-                 toc
-                 %Connect free modules that are in need of charge to available
-                 %charger(s)
-                 [x,y]=stairs(vehicledemand(:,1),cumsum(vehicledemand(:,2)));
-                 vehicledemand=[[x(1) 0];x y];
-                 
-             end
+            %Preallocate matrices
+            Ebat = zeros(numVehicles,length(t)); %Amount of energy in battery [kWh]
+            Driving = zeros(numVehicles,length(t)); %Driving = 1, not-driving = 0
+            Charging = zeros(numVehicles,length(t)); %Charging = 1, not-charging = 0
+            vehiclestarted = zeros(numVehicles,length(t));
+            vehiclesdone = zeros(numVehicles,length(t));
+            chargestarted = zeros(numVehicles,length(t));
+            chargedone = zeros(numVehicles,length(t));
+            %modulenode = zeros(numVehicles,length(t));
+            locations=zeros(terminals(end)+depots,numVehicles); %,length(t)
+            queue=zeros(numVehicles,6,terminals(end)+depots);% arrival time, vehicle no, dist travelled, energy discharge, bat capacity, soc
+            chargingqueue=zeros(Nchargers,6); %vehicle,  charge start time, endtime, energy charged
+            % Initialize depots with all vehicles
+            for i=1:depots
+                locations(terminals(end)+i,:)=ones(numVehicles(1),1);
+                queue(:,:,terminals(end)+i)=[zeros(numVehicles,1) [1:numVehicles]' zeros(numVehicles,1) zeros(numVehicles,1)...
+                    ones(numVehicles,1)*batterycapacity ones(numVehicles,1)];
+            end
+            
+            for i = 1:length(t)
+                % check if any departure/arrival/wait event occurs
+                currentevents=usedarcs(floor(usedarcs(:,3)*60)==t(i),:);
+                c01=[];
+                for j=1:size(currentevents,1) % some arcs are used more than once therefore duplicate events to assign correctly
+                    % repeat only arcs that are not waiting at depot
+                    if currentevents(j,1)<=nodes(end,1)
+                        c01=[c01;repmat(currentevents(j,:),currentevents(j,10),1)];
+                    elseif currentevents(j,8)==-1 & currentevents(j,1)>nodes(end,1)% duplicate pullout arcs if used more tahn once
+                        c01=[c01;repmat(currentevents(j,:),currentevents(j,10),1)];
+                    else
+                        c01=currentevents(j,:);
+                    end
+                    if j==size(currentevents,1)
+                        c01=sortrows(c01,8);
+                    end
+                end
+                currentevents=c01;
+                if ~isempty(currentevents)
+                    currentevents=sortrows(currentevents,3);
+                end
+                
+                %for each event
+                for j = 1:size(currentevents,1)
+                    
+                    if currentevents(j,8)==-1 % if the event is to pull out of depot
+                        %available = find(Driving(:,i)==0); %look for available modules
+                        available= queue(queue(:,2,terminals(end)+currentevents(j,6))~=0,:,...
+                            terminals(end)+currentevents(j,6));% find available vehicles at location/depot
+                        if isempty(available) % No idling/waiting vehicles
+                            % Find vehicle with the highest SOC at the charging
+                            % station
+                            [~,Index]=max(chargingqueue(:,6)); % find available charger used least
+                            vehicle = chargingqueue(Index,:); % select vehicle
+                            vehicle(1)=t(i)/60; % return to depot after disconnection
+                            % add back to depot queue
+                            queue(vehicle(1,2),:,end)=vehicle; % remove from queue at current stop
+                            available=vehicle;
+                            chargingqueue(Index,:)=0;
+                            Availablechargers=Availablechargers+1;
+                            Usedchargers=Usedchargers-1;
+                        end
+                        [~,Index]=max(available(:,4)); % find vehicle with max charge levels
+                        vehicle = available(Index,2);
+                        vehicle= queue(vehicle,:,end);
+                        queue(vehicle(2),:,terminals(end)+currentevents(j,6))=0;
+                        vehicle(1)=currentevents(j,4);
+                        vehicle(3)=currentevents(j,5)+vehicle(3); % distance travelled
+                        vehicle(4)=vehicle(4)-currentevents(j,5)*Econsempty;
+                        vehicle(6)=(vehicle(5)+vehicle(4))/vehicle(5); %SOC
+                        if vehicle(6)<0
+                            flag=1;
+                            disp(vehicle(2))
+                        end
+                        % update queue at destination
+                        queue(vehicle(2),:,nodes(currentevents(j,2),2))=vehicle;
+                        % update vehicle
+                        vehicles{1,vehicle(2)}=[vehicles{1,vehicle(2)} currentevents(j,1:2)]; % update used arcs
+                        vehicles{2,vehicle(2)}=[vehicles{2,vehicle(2)} currentevents(j,3:4)]; % update time
+                        vehicles{3,vehicle(2)}=[vehicles{3,vehicle(2)} -1]; % update status
+                        vehicles{4,vehicle(2)}=[vehicles{4,vehicle(2)} currentevents(j,5)]; % update km
+                        vehicles{5,vehicle(2)}=sum(vehicles{4,vehicle(2)}); % total km
+                        vehicles{6,vehicle(2)}=[vehicles{6,vehicle(2)}-currentevents(j,5)*1.2]; % soc
+                        vehicledemand(nd,:)=[t(i) 1];
+                        nd=nd+1;
+                    elseif currentevents(j,8)==-2 % if the event is a pull in
+                        terminal= nodes(currentevents(j,1),2); % terminal of trip departure
+                        % find vehicles available at terminal
+                        available=queue(queue(:,2,terminal)~=0,:,terminal);
+                        available=available(available(:,1)<=currentevents(j,3),:); % vehicles that have arrived before departure time of event j
+                        if isempty(available)
+                            2
+                        end
+                        [~,Index]=min(available(:,1)); % xx find vehicle with min charge levels xx % send vehicle with the lowest SOC back to depot
+                        vehicle = available(Index,:); % select vehicle
+                        vehicle=queue(vehicle(1,2),:,terminal);
+                        queue(vehicle(1,2),:,terminal)=0; % remove from queue at current stop
+                        vehicle(1)=currentevents(j,4);
+                        vehicle(3)=currentevents(j,5)+vehicle(3); % distance travelled
+                        vehicle(4)=vehicle(4)-currentevents(j,5)*Econsempty+0;
+                        vehicle(6)=(vehicle(5)+vehicle(4))/vehicle(5); %SOC
+                        if vehicle(6)<0
+                            flag=1;
+                            disp(vehicle(2))
+                        end
+                        % update queue at destination
+                        queue(vehicle(2),:,terminals(end)+currentevents(j,6))=vehicle;
+                        %
+                        distance=vehicle(1,3)+currentevents(j,5);  % total distance at next stop
+                        charge=vehicle(1,4)-currentevents(j,5)*Econs+0; % charge level at next stop
+                        
+                        
+                        vehicles{1,vehicle(1,2)}=[vehicles{1,vehicle(1,2)} currentevents(j,1:2)]; % update used arcs
+                        vehicles{2,vehicle(1,2)}=[vehicles{2,vehicle(1,2)} currentevents(j,3:4)]; % update time
+                        vehicles{3,vehicle(1,2)}=[vehicles{3,vehicle(1,2)} -2]; % update status
+                        vehicles{4,vehicle(1,2)}=[vehicles{4,vehicle(1,2)} currentevents(j,5) ]; % update km
+                        vehicles{5,vehicle(1,2)}=sum(vehicles{4,vehicle(1,2)}); % total km
+                        vehicles{6,vehicle(1,2)}=[vehicles{6,vehicle(1,2)} charge]; % soc
+                        
+                        vehicledemand(nd,:)=[t(i) -1];
+                        nd=nd+1;
+                        
+                    elseif currentevents(j,8)==1 % if the event is start a timetabled trip
+                        terminal= nodes(currentevents(j,1),2); % terminal of trip departure
+                        % find vehicles available at terminal
+                        available=queue(queue(:,2,terminal)~=0,:,terminal);
+                        available=available(available(:,1)<=currentevents(j,3),:); % vehicles that have arrived before departure time of event j
+                        [~,Index]=min(available(:,1)); % find vehicle waiting the longest
+                        vehicle = available(Index,:); % select vehicle
+                        vehicle=queue(vehicle(1,2),:,terminal);
+                        queue(vehicle(1,2),:,terminal)=0; % remove from queue at current stop
+                        % update queue at destination
+                        distance=vehicle(1,3)+currentevents(j,5);  % total distance at next stop
+                        charge=vehicle(1,4)-currentevents(j,5)*Econs; % charge level at next stop
+                        vehicle(1)=currentevents(j,4);
+                        vehicle(3)=distance; % distance travelled
+                        vehicle(4)=charge;
+                        vehicle(6)=(vehicle(5)+vehicle(4))/vehicle(5); %SOC
+                        if vehicle(6)<0
+                            flag=1;
+                            disp(vehicle(2))
+                        end
+                        
+                        queue(vehicle(1,2),:,nodes(currentevents(j,2),2))=vehicle;
+                        endind= find(t==currentevents(j,4)); % endtime of event
+                        Driving(vehicle(1,2),i:endind) = 1; %Start this module on a trip
+                        laststarted(vehicle(1,2)) = i; %Mark point for checking which modules are done driving
+                        vehiclestarted(vehicle(1,2),i:endind) = 1; %Mark point for plotting markers
+                        vehicles{1,vehicle(1,2)}=[vehicles{1,vehicle(1,2)} currentevents(j,1:2)]; % update used arcs
+                        vehicles{2,vehicle(1,2)}=[vehicles{2,vehicle(1,2)} currentevents(j,3:4)]; % update time
+                        vehicles{3,vehicle(1,2)}=[vehicles{3,vehicle(1,2)} 1]; % update status
+                        vehicles{4,vehicle(1,2)}=[vehicles{4,vehicle(1,2)} currentevents(j,5)]; % update km
+                        vehicles{5,vehicle(1,2)}=sum(vehicles{4,vehicle(1,2)}); % total km
+                        vehicles{6,vehicle(1,2)}=[vehicles{6,vehicle(1,2)} charge]; % soc
+                        
+                    elseif currentevents(j,8)==2 % if the event is to deadhead
+                        terminal= nodes(currentevents(j,1),2); % terminal of trip departure
+                        % find vehicles available at terminal
+                        available=queue(queue(:,2,terminal)~=0,:,terminal);
+                        available=available(available(:,1)<=currentevents(j,3),:); % vehicles that have arrived before departure time of event j
+                        [~,Index]=min(available(:,4)); % find vehicle that arrived first
+                        vehicle = available(Index,:); % select vehicle
+                        vehicle=queue(vehicle(1,2),:,terminal);
+                        queue(vehicle(1,2),:,terminal)=0; % remove from queue at current stop
+                        % update queue at destination
+                        distance=vehicle(1,3)+currentevents(j,5);  % total distance at next stop
+                        charge=vehicle(1,4)-currentevents(j,5)*Econsempty; % charge level at next stop
+                        vehicle(1)=currentevents(j,4);
+                        vehicle(3)=distance; % distance travelled
+                        vehicle(4)=charge;
+                        vehicle(6)=(vehicle(5)+vehicle(4))/vehicle(5); %SOC
+                        if vehicle(6)<0
+                            flag=1;
+                            disp(vehicle(2))
+                        end
+                        
+                        queue(vehicle(1,2),:,nodes(currentevents(j,2),2))=vehicle;
+                        endind= find(t==currentevents(j,4)); % endtime of event
+                        Driving(vehicle(1,2),i:endind) = 1; %Start this module on a trip
+                        laststarted(vehicle(1,2)) = i; %Mark point for checking which modules are done driving
+                        vehiclestarted(vehicle(1,2),i:endind) = 1; %Mark point for plotting markers
+                        vehicles{1,vehicle(1,2)}=[vehicles{1,vehicle(1,2)} currentevents(j,1:2)]; % update used arcs
+                        vehicles{2,vehicle(1,2)}=[vehicles{2,vehicle(1,2)} currentevents(j,3:4)]; % update time
+                        vehicles{3,vehicle(1,2)}=[vehicles{3,vehicle(1,2)} 2]; % update status
+                        vehicles{4,vehicle(1,2)}=[vehicles{4,vehicle(1,2)} currentevents(j,5)]; % update km
+                        vehicles{5,vehicle(1,2)}=sum(vehicles{4,vehicle(1,2)}); % total km
+                        vehicles{6,vehicle(1,2)}=[vehicles{6,vehicle(1,2)} charge]; % soc
+                        
+                    elseif currentevents(j,8)==0 % if the event is to keep waiting
+                        
+                        if currentevents(j,1)<=nodes(end,1) % if the waiting event is not at the depot
+                            
+                            terminal= nodes(currentevents(j,1),2); % terminal of trip departure
+                            % find vehicles available at terminal
+                            available=queue(queue(:,2,terminal)~=0,:,terminal);
+                            available=available(available(:,1)<=currentevents(j,3),:); % vehicles that have arrived before departure time of event j
+                            if size(available,1)>1
+                                2;
+                            end
+                            [~,Index]=max(available(:,4)); % find vehicle that has the least soc
+                            vehicle = available(Index,:); % select vehicle
+                            vehicle=queue(vehicle(1,2),:,terminal);
+                            queue(vehicle(1,2),:,terminal)=0; % remove from queue at current stop
+                            % update queue at destination
+                            distance=vehicle(1,3)+currentevents(j,5);  % total distance at next stop
+                            charge=vehicle(1,4)-currentevents(j,5)*Econs; % charge level at next stop
+                            % vehicle(1)=currentevents(j,4);
+                            vehicle(3)=distance; % distance travelled
+                            vehicle(4)=charge;
+                            vehicle(6)=(vehicle(5)+vehicle(4))/vehicle(5); %SOC
+                            queue(vehicle(1,2),:,nodes(currentevents(j,2),2))=vehicle;
+                            if vehicle(6)<0
+                                flag=1;
+                                disp(vehicle(2))
+                            end
+                            
+                            % if no charging:
+                            vehicles{1,vehicle(1,2)}=[vehicles{1,vehicle(1,2)} currentevents(j,1:2)]; % update used arcs
+                            vehicles{2,vehicle(1,2)}=[vehicles{2,vehicle(1,2)} currentevents(j,3:4)]; % update time
+                            vehicles{3,vehicle(1,2)}=[vehicles{3,vehicle(1,2)} 3]; % update status
+                            vehicles{4,vehicle(1,2)}=[vehicles{4,vehicle(1,2)} currentevents(j,5)]; % update km
+                            vehicles{5,vehicle(1,2)}=sum(vehicles{4,vehicle(1,2)}); % total km
+                        end
+                        
+                        
+                    elseif currentevents(j,8)==5 % if the event is to end service
+                        []; % do nothing - make sure all vehicles return to depot
+                    end
+                    
+                end
+                
+                %% assign vehicles to available chargers
+                availablevehicles=queue(queue(:,2,end)~=0,:,end);
+                availablevehicles=availablevehicles(availablevehicles(:,6)...
+                    <1,:);
+                if Availablechargers>0 & size(availablevehicles,1)>0 % if there is a charger available and vehicle needs charging
+                    if size(availablevehicles,1)==1
+                        
+                        Availablechargers=Availablechargers-1; % connect vehicle to charger
+                        Usedchargers=Nchargers-Availablechargers;
+                        [~,Index]=min(chargingqueue(:,1)); % find available charger used least
+                        % find vehicle with lowest SOC to connect to charger
+                        vehicle=availablevehicles;
+                        queue(vehicle(2),:,end)=0; %remove vehicle from queue at depot
+                        chargingqueue(Index,1)=t(i)/60 + 0; % charging start time instantaneous connection
+                        chargingqueue(Index,2)=vehicle(2); % vehicle num
+                        chargingqueue(Index,3)=vehicle(3); % vehicle distance travelled
+                        chargingqueue(Index,4)=vehicle(4); % current charge level
+                        chargingqueue(Index,5)=vehicle(5); % battery capacity level
+                        chargingqueue(Index,6)=vehicle(6); % soc level
+                        
+                        
+                        
+                    else % if more than one vehicle needs to be charged
+                        
+                        if size(availablevehicles,1)<=Availablechargers
+                            for ii=1:size(availablevehicles,1)
+                                Availablechargers=Availablechargers-1; % connect vehicle to charger
+                                Usedchargers=Nchargers-Availablechargers;
+                                [~,Index]=min(chargingqueue(:,1)); % find available charger
+                                % all vehicles in the queue can be connected to a charger
+                                vehicle=availablevehicles(ii,:);
+                                queue(vehicle(2),:,end)=0; %remove vehicle from queue at depot
+                                chargingqueue(Index,1)=t(i)/60+ 0; % charging start time instantaneous connection
+                                chargingqueue(Index,2)=vehicle(2); % vehicle num
+                                chargingqueue(Index,3)=vehicle(3); % vehicle distance travelled
+                                chargingqueue(Index,4)=vehicle(4); % current charge level
+                                chargingqueue(Index,5)=vehicle(5); % battery capacity level
+                                chargingqueue(Index,6)=vehicle(6); % soc level
+                                
+                            end
+                            
+                        else % if more vehicles need to be charged than available chargers
+                            % find vehicles withh the lowest soc
+                            for ii=1:Availablechargers % for each available charger connect vehicle with the lowest SOC
+                                Availablechargers=Availablechargers-1; % connect vehicle to charger
+                                Usedchargers=Nchargers-Availablechargers;
+                                [~,Index]=min(chargingqueue(:,1)); % find available charger
+                                % find vehicle with lowest SOC to connect to charger
+                                [~,Index1]=min(availablevehicles(:,4)); % xx find vehicle with min charge levels xx % send vehicle with the lowest SOC back to depot
+                                vehicle = availablevehicles(Index1,:); % select vehicle
+                                queue(vehicle(2),:,end)=0; %remove vehicle from queue at depot
+                                chargingqueue(Index,1)=t(i)/60+ 0; % charging start time instantaneous connection
+                                chargingqueue(Index,2)=vehicle(2); % vehicle num
+                                chargingqueue(Index,3)=vehicle(3); % vehicle distance travelled
+                                chargingqueue(Index,4)=vehicle(4); % current charge level
+                                chargingqueue(Index,5)=vehicle(5); % battery capacity level
+                                chargingqueue(Index,6)=vehicle(6); % soc level
+                                
+                            end
+                        end
+                    end
+                end
+                % update amount charged to the vehicles until the next time step
+                if i<length(t-1) & Usedchargers>=0
+                    %  find time difference until next time step
+                    t_step=t(i+1)-t(i);
+                    energycharged=t_step*chargerpower/60; % kwh in 1 min
+                    chargedemand(i)=energycharged*Usedchargers;
+                    chargingqueue(chargingqueue(:,2)>0,4)=...
+                        chargingqueue(chargingqueue(:,2)>0,4)+energycharged;
+                    chargingqueue(:,6)=(chargingqueue(:,5)+chargingqueue(:,4))./...
+                        chargingqueue(:,5); % update SOC
+                    % stop charging vehicles that have completed
+                    donecharging=chargingqueue(chargingqueue(:,6)>=1);
+                    
+                    if size(donecharging,1)>0
+                        for ii=1:size(donecharging)
+                            [~,Index]=max(chargingqueue(:,6)); % find available charger used least
+                            vehicle = chargingqueue(Index,:); % select vehicle
+                            vehicle(1)=t(i+1)+5/60; % return to depot after disconnection
+                            vehicle(4)=0;
+                            vehicle(6)=1;
+                            % add back to depot queue
+                            queue(vehicle(1,2),:,end)=vehicle; % remove from queue at current stop
+                            chargingqueue(Index,:)=0;
+                            Availablechargers=Availablechargers+1;
+                            Usedchargers=Usedchargers-1;
+                        end
+                    end
+                    
+                end
+                currentevents=[];
+                if flag==1
+                    disp('No feasible solution')
+                    break
+                end
+            end
+            toc
+            %Connect free modules that are in need of charge to available
+            %charger(s)
+            [x,y]=stairs(vehicledemand(:,1),cumsum(vehicledemand(:,2)));
+            vehicledemand=[[x(1) 0];x y];
+            
+        end
+        function [vehicles,flag]=dispatchsimhsoc(obj,arcs,var,nodes,timetable,Econs,batterycapacity)
+            %% This function decomposes the optimal flow using a heuristic by assigning
+            % trips to buses that have the highest state of charge
+            %%
+            tic
+            chargerpower=150; %charger power in kW
+            timestep = 1; % timestep is 1 min
+            usedarcs=arcs(var>0,:);
+            x=var(var>0);
+            usedarcs(:,end+1)=x;
+            departures=sortrows([usedarcs(:,1) usedarcs(:,3)  usedarcs(:,6)  usedarcs(:,8)  usedarcs(:,9:10)],2); % nodeid, departime, depotnum, status, arcno
+            arrivals=sortrows([usedarcs(:,2) usedarcs(:,4) usedarcs(:,6)  usedarcs(:,8)  usedarcs(:,9:10)],2); % nodeid, departime, depotnum, status, arcno
+            terminals=unique(nodes(:,2));
+            depots=unique(usedarcs(:,6));
+            events=unique(sortrows([departures(:,2);arrivals(:,2)]));
+            events=(events(2:end,:));
+            %n_tripsteps = round(t_trip/timestep);
+            energyconsumed = timestep*4; %Energy consumed in the Schedule.timestep [kWh]
+            energycharged = timestep*chargerpower; %Charged energy per Schedule.timestep [kWh]
+            vehicledemand=zeros(size(usedarcs(usedarcs(:,8)==-1,:),1)*2,2);
+            nd=1; % counter for depot departures/arrivals
+            %t_load = cell2mat(Demand(1,1));
+            %demand_load = cell2mat(Demand(1,2));
+            %[t_load, index] = unique(t_load);
+            %t = departures(3,2):timestep: arrivals(end,2); %timevector
+            t=floor(departures(3,2)*60):timestep:round((24+departures(3,2))*60)-1; % until next day first trip
+            % t=sort([t';events]);
+            % t=unique(t);
+            if depots==1
+                numVehicles=var(1);
+            end
+            Nchargers=80;
+            Usedchargers=0;
+            Econsempty=.8*Econs;%0.4;%0.9;
+            Charging = zeros(numVehicles,4); % charger number, available, vehiclenum, energy charged,
+            Availablechargers = Nchargers;
+            vehicles=cell(6,numVehicles);
+            %Parameter for finding continuum
+            threshold = -100; %Abort threshold for average energy drained at the end of the day
+            iterationcounter = 0;
+            continuous = false;
+            flag=0; % flag if solution is infeasible
+            thresholdsoc=0.2;
+            %Preallocate matrices
+            Ebat = zeros(numVehicles,length(t)); %Amount of energy in battery [kWh]
+            Driving = zeros(numVehicles,length(t)); %Driving = 1, not-driving = 0
+            Charging = zeros(numVehicles,length(t)); %Charging = 1, not-charging = 0
+            vehiclestarted = zeros(numVehicles,length(t));
+            vehiclesdone = zeros(numVehicles,length(t));
+            chargestarted = zeros(numVehicles,length(t));
+            chargedone = zeros(numVehicles,length(t));
+            %modulenode = zeros(numVehicles,length(t));
+            locations=zeros(terminals(end)+depots,numVehicles); %,length(t)
+            queue=zeros(numVehicles,6,terminals(end)+depots);% arrival time, vehicle no, dist travelled, energy discharge, bat capacity, soc
+            chargingqueue=zeros(Nchargers,6); %vehicle,  charge start time, endtime, energy charged
+            % Initialize depots with all vehicles
+            for i=1:depots
+                locations(terminals(end)+i,:)=ones(numVehicles(1),1);
+                queue(:,:,terminals(end)+i)=[zeros(numVehicles,1) [1:numVehicles]' zeros(numVehicles,1) zeros(numVehicles,1)...
+                    ones(numVehicles,1)*batterycapacity ones(numVehicles,1)];
+            end
+            
+            for i = 1:length(t)
+                % check if any departure/arrival/wait event occurs
+                currentevents=usedarcs(floor(usedarcs(:,3)*60)==t(i),:);
+                c01=[];
+                for j=1:size(currentevents,1) % some arcs are used more than once therefore duplicate events to assign correctly
+                    % repeat only arcs that are not waiting at depot
+                    if currentevents(j,1)<=nodes(end,1)
+                        c01=[c01;repmat(currentevents(j,:),currentevents(j,10),1)];
+                    elseif currentevents(j,8)==-1 & currentevents(j,1)>nodes(end,1)% duplicate pullout arcs if used more tahn once
+                        c01=[c01;repmat(currentevents(j,:),currentevents(j,10),1)];
+                    else
+                        c01=currentevents(j,:);
+                    end
+                    if j==size(currentevents,1)
+                        c01=sortrows(c01,8);
+                    end
+                end
+                currentevents=c01;
+                if ~isempty(currentevents)
+                    currentevents=sortrows(currentevents,3);
+                end
+                
+                %for each event
+                for j = 1:size(currentevents,1)
+                    
+                    if currentevents(j,8)==-1 % if the event is to pull out of depot
+                        %available = find(Driving(:,i)==0); %look for available modules
+                        available= queue(queue(:,2,terminals(end)+currentevents(j,6))~=0,:,...
+                            terminals(end)+currentevents(j,6));% find available vehicles at location/depot
+                        if isempty(available) % No idling/waiting vehicles
+                            % Find vehicle with the highest SOC at the charging
+                            % station
+                            [~,Index]=max(chargingqueue(:,6)); % find available charger used least
+                            vehicle = chargingqueue(Index,:); % select vehicle
+                            vehicle(1)=t(i)/60; % return to depot after disconnection
+                            % add back to depot queue
+                            queue(vehicle(1,2),:,end)=vehicle; % remove from queue at current stop
+                            available=vehicle;
+                            chargingqueue(Index,:)=0;
+                            Availablechargers=Availablechargers+1;
+                            Usedchargers=Usedchargers-1;
+                        end
+                        [~,Index]=max(available(:,4)); % find vehicle with max charge levels
+                        vehicle = available(Index,2);
+                        vehicle= queue(vehicle,:,end);
+                        queue(vehicle(2),:,terminals(end)+currentevents(j,6))=0;
+                        vehicle(1)=currentevents(j,4);
+                        vehicle(3)=currentevents(j,5)+vehicle(3); % distance travelled
+                        vehicle(4)=vehicle(4)-currentevents(j,5)*Econsempty;
+                        vehicle(6)=(vehicle(5)+vehicle(4))/vehicle(5); %SOC
+                        if vehicle(6)<0
+                            flag=1;
+                            disp(vehicle(2))
+                        end
+                        % update queue at destination
+                        queue(vehicle(2),:,nodes(currentevents(j,2),2))=vehicle;
+                        % update vehicle
+                        vehicles{1,vehicle(2)}=[vehicles{1,vehicle(2)} currentevents(j,1:2)]; % update used arcs
+                        vehicles{2,vehicle(2)}=[vehicles{2,vehicle(2)} currentevents(j,3:4)]; % update time
+                        vehicles{3,vehicle(2)}=[vehicles{3,vehicle(2)} -1]; % update status
+                        vehicles{4,vehicle(2)}=[vehicles{4,vehicle(2)} currentevents(j,5)]; % update km
+                        vehicles{5,vehicle(2)}=sum(vehicles{4,vehicle(2)}); % total km
+                        vehicles{6,vehicle(2)}=[vehicles{6,vehicle(2)}-currentevents(j,5)*1.2]; % soc
+                        vehicledemand(nd,:)=[t(i) 1];
+                        nd=nd+1;
+                    elseif currentevents(j,8)==-2 % if the event is a pull in
+                        terminal= nodes(currentevents(j,1),2); % terminal of trip departure
+                        % find vehicles available at terminal
+                        available=queue(queue(:,2,terminal)~=0,:,terminal);
+                        available=available(available(:,1)<=currentevents(j,3),:); % vehicles that have arrived before departure time of event j
+                        if isempty(available)
+                            2
+                        end
+                        [~,Index]=min(available(:,4)); % xx find vehicle with min charge levels xx % send vehicle with the lowest SOC back to depot
+                        vehicle = available(Index,:); % select vehicle
+                        vehicle=queue(vehicle(1,2),:,terminal);
+                        queue(vehicle(1,2),:,terminal)=0; % remove from queue at current stop
+                        vehicle(1)=currentevents(j,4);
+                        vehicle(3)=currentevents(j,5)+vehicle(3); % distance travelled
+                        vehicle(4)=vehicle(4)-currentevents(j,5)*Econsempty+0;
+                        vehicle(6)=(vehicle(5)+vehicle(4))/vehicle(5); %SOC
+                        if vehicle(6)<0
+                            flag=1;
+                            disp(vehicle(2))
+                            
+                        end
+                        % update queue at destination
+                        queue(vehicle(2),:,terminals(end)+currentevents(j,6))=vehicle;
+                        %
+                        distance=vehicle(1,3)+currentevents(j,5);  % total distance at next stop
+                        charge=vehicle(1,4)-currentevents(j,5)*Econs+0; % charge level at next stop
+                        
+                        
+                        vehicles{1,vehicle(1,2)}=[vehicles{1,vehicle(1,2)} currentevents(j,1:2)]; % update used arcs
+                        vehicles{2,vehicle(1,2)}=[vehicles{2,vehicle(1,2)} currentevents(j,3:4)]; % update time
+                        vehicles{3,vehicle(1,2)}=[vehicles{3,vehicle(1,2)} -2]; % update status
+                        vehicles{4,vehicle(1,2)}=[vehicles{4,vehicle(1,2)} currentevents(j,5) ]; % update km
+                        vehicles{5,vehicle(1,2)}=sum(vehicles{4,vehicle(1,2)}); % total km
+                        vehicles{6,vehicle(1,2)}=[vehicles{6,vehicle(1,2)} charge]; % soc
+                        
+                        vehicledemand(nd,:)=[t(i) -1];
+                        nd=nd+1;
+                        
+                    elseif currentevents(j,8)==1 % if the event is start a timetabled trip
+                        terminal= nodes(currentevents(j,1),2); % terminal of trip departure
+                        % find vehicles available at terminal
+                        available=queue(queue(:,2,terminal)~=0,:,terminal);
+                        available=available(available(:,1)<=currentevents(j,3),:); % vehicles that have arrived before departure time of event j
+                        if size(available,1)>1
+                            1
+                        end
+                        if isempty(available)
+                            2
+                        end
+                        [~,Index]=max(available(:,4)); % find vehicle with min charge levels
+                        vehicle = available(Index,:); % select vehicle
+                        vehicle=queue(vehicle(1,2),:,terminal);
+                        queue(vehicle(1,2),:,terminal)=0; % remove from queue at current stop
+                        % update queue at destination
+                        distance=vehicle(1,3)+currentevents(j,5);  % total distance at next stop
+                        charge=vehicle(1,4)-currentevents(j,5)*Econs; % charge level at next stop
+                        vehicle(1)=currentevents(j,4);
+                        vehicle(3)=distance; % distance travelled
+                        vehicle(4)=charge;
+                        vehicle(6)=(vehicle(5)+vehicle(4))/vehicle(5); %SOC
+                        if vehicle(6)<thresholdsoc
+                            3
+                            
+                        end
+                        if vehicle(6)<0
+                            flag=1;
+                            disp(vehicle(2))
+                            
+                        end
+                        
+                        queue(vehicle(1,2),:,nodes(currentevents(j,2),2))=vehicle;
+                        endind= find(t==currentevents(j,4)); % endtime of event
+                        Driving(vehicle(1,2),i:endind) = 1; %Start this module on a trip
+                        laststarted(vehicle(1,2)) = i; %Mark point for checking which modules are done driving
+                        vehiclestarted(vehicle(1,2),i:endind) = 1; %Mark point for plotting markers
+                        vehicles{1,vehicle(1,2)}=[vehicles{1,vehicle(1,2)} currentevents(j,1:2)]; % update used arcs
+                        vehicles{2,vehicle(1,2)}=[vehicles{2,vehicle(1,2)} currentevents(j,3:4)]; % update time
+                        vehicles{3,vehicle(1,2)}=[vehicles{3,vehicle(1,2)} 1]; % update status
+                        vehicles{4,vehicle(1,2)}=[vehicles{4,vehicle(1,2)} currentevents(j,5)]; % update km
+                        vehicles{5,vehicle(1,2)}=sum(vehicles{4,vehicle(1,2)}); % total km
+                        vehicles{6,vehicle(1,2)}=[vehicles{6,vehicle(1,2)} charge]; % soc
+                        
+                    elseif currentevents(j,8)==2 % if the event is to deadhead
+                        terminal= nodes(currentevents(j,1),2); % terminal of trip departure
+                        % find vehicles available at terminal
+                        available=queue(queue(:,2,terminal)~=0,:,terminal);
+                        available=available(available(:,1)<=currentevents(j,3),:); % vehicles that have arrived before departure time of event j
+                        [~,Index]=max(available(:,4)); % find vehicle with max charge levels
+                        vehicle = available(Index,:); % select vehicle
+                        vehicle=queue(vehicle(1,2),:,terminal);
+                        queue(vehicle(1,2),:,terminal)=0; % remove from queue at current stop
+                        % update queue at destination
+                        distance=vehicle(1,3)+currentevents(j,5);  % total distance at next stop
+                        charge=vehicle(1,4)-currentevents(j,5)*Econsempty; % charge level at next stop
+                        vehicle(1)=currentevents(j,4);
+                        vehicle(3)=distance; % distance travelled
+                        vehicle(4)=charge;
+                        vehicle(6)=(vehicle(5)+vehicle(4))/vehicle(5); %SOC
+                        if vehicle(6)<thresholdsoc
+                            3
+                        end
+                        if vehicle(6)<0
+                            flag=1;
+                            disp(vehicle(2))
+                        end
+                        
+                        queue(vehicle(1,2),:,nodes(currentevents(j,2),2))=vehicle;
+                        endind= find(t==currentevents(j,4)); % endtime of event
+                        Driving(vehicle(1,2),i:endind) = 1; %Start this module on a trip
+                        laststarted(vehicle(1,2)) = i; %Mark point for checking which modules are done driving
+                        vehiclestarted(vehicle(1,2),i:endind) = 1; %Mark point for plotting markers
+                        vehicles{1,vehicle(1,2)}=[vehicles{1,vehicle(1,2)} currentevents(j,1:2)]; % update used arcs
+                        vehicles{2,vehicle(1,2)}=[vehicles{2,vehicle(1,2)} currentevents(j,3:4)]; % update time
+                        vehicles{3,vehicle(1,2)}=[vehicles{3,vehicle(1,2)} 2]; % update status
+                        vehicles{4,vehicle(1,2)}=[vehicles{4,vehicle(1,2)} currentevents(j,5)]; % update km
+                        vehicles{5,vehicle(1,2)}=sum(vehicles{4,vehicle(1,2)}); % total km
+                        vehicles{6,vehicle(1,2)}=[vehicles{6,vehicle(1,2)} charge]; % soc
+                        
+                    elseif currentevents(j,8)==0 % if the event is to keep waiting
+                        
+                        if currentevents(j,1)<=nodes(end,1) % if the waiting event is not at the depot
+                            
+                            terminal= nodes(currentevents(j,1),2); % terminal of trip departure
+                            % find vehicles available at terminal
+                            available=queue(queue(:,2,terminal)~=0,:,terminal);
+                            available=available(available(:,1)<=currentevents(j,3),:); % vehicles that have arrived before departure time of event j
+                            if size(available,1)>1
+                                2
+                            end
+                            [~,Index]=max(available(:,1)); %use vehiclw waited the least to wait %max(available(:,4)); % find vehicle that has the least soc
+                            vehicle = available(Index,:); % select vehicle
+                            vehicle=queue(vehicle(1,2),:,terminal);
+                            queue(vehicle(1,2),:,terminal)=0; % remove from queue at current stop
+                            % update queue at destination
+                            distance=vehicle(1,3)+currentevents(j,5);  % total distance at next stop
+                            charge=vehicle(1,4)-currentevents(j,5)*Econs; % charge level at next stop
+                            vehicle(1)=currentevents(j,4);
+                            vehicle(3)=distance; % distance travelled
+                            vehicle(4)=charge;
+                            vehicle(6)=(vehicle(5)+vehicle(4))/vehicle(5); %SOC
+                            queue(vehicle(1,2),:,nodes(currentevents(j,2),2))=vehicle;
+                            if vehicle(6)<0
+                                flag=1;
+                                disp(vehicle(2))
+                            end
+                            
+                            % if no charging:
+                            vehicles{1,vehicle(1,2)}=[vehicles{1,vehicle(1,2)} currentevents(j,1:2)]; % update used arcs
+                            vehicles{2,vehicle(1,2)}=[vehicles{2,vehicle(1,2)} currentevents(j,3:4)]; % update time
+                            vehicles{3,vehicle(1,2)}=[vehicles{3,vehicle(1,2)} 3]; % update status
+                            vehicles{4,vehicle(1,2)}=[vehicles{4,vehicle(1,2)} currentevents(j,5)]; % update km
+                            vehicles{5,vehicle(1,2)}=sum(vehicles{4,vehicle(1,2)}); % total km
+                        end
+                        
+                        
+                    elseif currentevents(j,8)==5 % if the event is to end service
+                        []; % do nothing - make sure all vehicles return to depot
+                    end
+                    
+                end
+                
+                %% assign vehicles to available chargers
+                availablevehicles=queue(queue(:,2,end)~=0,:,end);
+                availablevehicles=availablevehicles(availablevehicles(:,6)...
+                    <1,:);
+                availablevehicles=availablevehicles(availablevehicles(:,1)<=t(i)/60,:);
+                if Availablechargers>0 & size(availablevehicles,1)>0 % if there is a charger available and vehicle needs charging
+                    if size(availablevehicles,1)==1
+                        
+                        Availablechargers=Availablechargers-1; % connect vehicle to charger
+                        Usedchargers=Nchargers-Availablechargers;
+                        [~,Index]=min(chargingqueue(:,1)); % find available charger used least
+                        % find vehicle with lowest SOC to connect to charger
+                        vehicle=availablevehicles;
+                        queue(vehicle(2),:,end)=0; %remove vehicle from queue at depot
+                        chargingqueue(Index,1)=t(i)/60 + 0; % charging start time instantaneous connection
+                        chargingqueue(Index,2)=vehicle(2); % vehicle num
+                        chargingqueue(Index,3)=vehicle(3); % vehicle distance travelled
+                        chargingqueue(Index,4)=vehicle(4); % current charge level
+                        chargingqueue(Index,5)=vehicle(5); % battery capacity level
+                        chargingqueue(Index,6)=vehicle(6); % soc level
+                        
+                        
+                        
+                    else % if more than one vehicle needs to be charged
+                        
+                        if size(availablevehicles,1)<=Availablechargers
+                            for ii=1:size(availablevehicles,1)
+                                Availablechargers=Availablechargers-1; % connect vehicle to charger
+                                Usedchargers=Nchargers-Availablechargers;
+                                [~,Index]=min(chargingqueue(:,1)); % find available charger
+                                % all vehicles in the queue can be connected to a charger
+                                vehicle=availablevehicles(ii,:);
+                                queue(vehicle(2),:,end)=0; %remove vehicle from queue at depot
+                                chargingqueue(Index,1)=t(i)/60+ 0; % charging start time instantaneous connection
+                                chargingqueue(Index,2)=vehicle(2); % vehicle num
+                                chargingqueue(Index,3)=vehicle(3); % vehicle distance travelled
+                                chargingqueue(Index,4)=vehicle(4); % current charge level
+                                chargingqueue(Index,5)=vehicle(5); % battery capacity level
+                                chargingqueue(Index,6)=vehicle(6); % soc level
+                                
+                            end
+                            
+                        else % if more vehicles need to be charged than available chargers
+                            % find vehicles withh the lowest soc
+                            for ii=1:Availablechargers % for each available charger connect vehicle with the lowest SOC
+                                Availablechargers=Availablechargers-1; % connect vehicle to charger
+                                Usedchargers=Nchargers-Availablechargers;
+                                [~,Index]=min(chargingqueue(:,1)); % find available charger
+                                % find vehicle with lowest SOC to connect to charger
+                                [~,Index1]=min(availablevehicles(:,4)); % xx find vehicle with min charge levels xx % send vehicle with the lowest SOC back to depot
+                                vehicle = availablevehicles(Index1,:); % select vehicle
+                                queue(vehicle(2),:,end)=0; %remove vehicle from queue at depot
+                                chargingqueue(Index,1)=t(i)/60+ 0; % charging start time instantaneous connection
+                                chargingqueue(Index,2)=vehicle(2); % vehicle num
+                                chargingqueue(Index,3)=vehicle(3); % vehicle distance travelled
+                                chargingqueue(Index,4)=vehicle(4); % current charge level
+                                chargingqueue(Index,5)=vehicle(5); % battery capacity level
+                                chargingqueue(Index,6)=vehicle(6); % soc level
+                                
+                            end
+                        end
+                    end
+                end
+                % update amount charged to the vehicles until the next time step
+                if i<length(t-1) & Usedchargers>=0
+                    %  find time difference until next time step
+                    t_step=t(i+1)-t(i);
+                    energycharged=t_step*chargerpower/60; % kwh in 1 min
+                    chargedemand(i)=energycharged*Usedchargers;
+                    chargingqueue(chargingqueue(:,2)>0,4)=...
+                        chargingqueue(chargingqueue(:,2)>0,4)+energycharged;
+                    chargingqueue(:,6)=(chargingqueue(:,5)+chargingqueue(:,4))./...
+                        chargingqueue(:,5); % update SOC
+                    % stop charging vehicles that have completed
+                    donecharging=chargingqueue(chargingqueue(:,6)>=1);
+                    
+                    if size(donecharging,1)>0
+                        for ii=1:size(donecharging)
+                            [~,Index]=max(chargingqueue(:,6)); % find available charger used least
+                            vehicle = chargingqueue(Index,:); % select vehicle
+                            vehicle(1)=t(i+1)+5/60; % return to depot after disconnection
+                            vehicle(4)=0;
+                            vehicle(6)=1;
+                            % add back to depot queue
+                            queue(vehicle(1,2),:,end)=vehicle; % remove from queue at current stop
+                            chargingqueue(Index,:)=0;
+                            Availablechargers=Availablechargers+1;
+                            Usedchargers=Usedchargers-1;
+                        end
+                    end
+                    
+                end
+                currentevents=[];
+                if flag==1
+                    disp('No feasible solution')
+                    break
+                end
+            end
+            toc
+            %Connect free modules that are in need of charge to available
+            %charger(s)
+            [x,y]=stairs(vehicledemand(:,1),cumsum(vehicledemand(:,2)));
+            vehicledemand=[[x(1) 0];x y];
+            
+        end
         
-             
+        
         
         function property=propertyevaluation(obj)
             
             property.serviceperformance.waitingtime=mean([obj.lines.meanwaitingtime]);
             
             property.serviceperformance.dwellingtime= mean([obj.lines.meandwellingtime]); % not including stops with zero dwelling time
-            
-            property.serviceperformance.traveltime=mean([obj.lines.meaninvehicletime])+mean([obj.lines.meanwaitingtime;]);
+            property.serviceperformance.seatingratio=obj.vehicle.Interior.numberseats/obj.vehicle.Interior.passengercapacity;
+            %property.serviceperformance.traveltime=mean([obj.lines.meaninvehicletime])+mean([obj.lines.meanwaitingtime;]);
             property.serviceperformance.seatavailability=mean(cell2mat({obj.lines.seatavailabilityinmin}'));
             property.serviceperformance.meanoccupancy=obj.occupancy;
             passengers=cell2mat({(obj.lines.totalpassengers)}');
-            property.serviceperformance.missedboardings=sum(passengers(:,6))/size(passengers,1)*100;
+            property.serviceperformance.missedboardings=0*sum(passengers(:,6))/size(passengers,1)*100;
+            
+            
             property.accessibility.wheelchairzones=obj.vehicle.Interior.wheelchairzones;
-            property.accessibility.entryheight=150;%obj.vehicle.Body.groundclearance;
-            property.accessibility.doorratio=obj.vehicle.Passengercapacity/(obj.vehicle.Interior.numberofdoors*1.2);
-            property.accessibility.saturationflow=20;
-            property.accessibility.decks=1;
-            property.accessibility.bicycles=0;
-            property.comfort.seatsize=(obj.vehicle.Interior.seatwidth/1000)*obj.vehicle.Interior.seatpitch/1000; %-correct
+            property.accessibility.entryheight=50;%obj.vehicle.Body.groundclearance;
+          %  property.accessibility.doorratio=obj.vehicle.Passengercapacity/(obj.vehicle.Interior.numberofdoors*1.2);
+           property.accessibility.numberdoors=obj.vehicle.Interior.numberofdoors; 
+           property.accessibility.doorwidth=obj.vehicle.Interior.doorwidth;
+         %  property.accessibility.saturationflow=20;
+          %  property.accessibility.decks=1;
+           % property.accessibility.bicycles=0;
+             property.accessibility.lowfloor=1; %if no interior steps =1  
+           property.accessibility.aislewidth=obj.vehicle.Interior.aislewidth;
+           
+           
+           
+           property.comfort.seatsize=obj.vehicle.Interior.seatwidth;
             property.comfort.legroom=obj.vehicle.Interior.seatpitch;
             property.comfort.standingarea=1/obj.vehicle.Interior.standingspace;
             property.comfort.temperature=24;
             property.comfort.windowsize=1;
-            property.comfort.headroom=250;
-            property.comfort.nvh=1;
             property.comfort.ridecomfort=1;
-            property.functionality.information=0;
-            property.functionality.payment=0;
-            property.functionality.storagespace=0;
-            property.functionality.usablearea=0;
-            property.functionality.poweroutlet=0;
-            property.luxury.seats=0;
-            property.luxury.privacyseating=0;
-            property.luxury.privatestanding=0;
-            property.safety.rollstability=0;
-            property.safety.cameras=0;
-            property.safety.seatbelts=0;
-            property.safety.handles=0;
-            property.safety.illumination=0;
-            property.longitudinaldynamics.speed=obj.vehicle.Properties.TopSpeed.Value*3.6;
+            property.comfort.headroom=obj.vehicle.Interior.interiorheight;
+            property.comfort.nvh=1;
+            
+            property.functionality.information=01;
+            property.functionality.payment=01;
+            property.functionality.storagespace=01;
+        %    property.functionality.usablearea=01;
+            property.functionality.poweroutlet=01;
+%             property.luxury.seats=0;
+%             property.luxury.privacyseating=0;
+%             property.luxury.privatestanding=0;
+            property.safety.rollstability=01;
+            property.safety.cameras=01;
+            property.safety.seatbelts=01;
+            property.safety.handles=01;
+            property.safety.illumination=01;
+         
+            property.longitudinaldynamics.speed=obj.vehicle.Properties.TopSpeed.Value;
             property.longitudinaldynamics.acceleration=obj.vehicle.Properties.Acceleration.Value;
             property.longitudinaldynamics.grade=obj.vehicle.Properties.Gradeability.Value;
+            
             property.costs.TCO=obj.TCO.passengerkm;
             property.costs.acquisition=obj.TCO.year0/obj.TCO.total;
-            property.costs.operatio=1-obj.TCO.year0/obj.TCO.total;
+            property.costs.operation=1-obj.TCO.year0/obj.TCO.total;
+            
+            
             property.environment.emissions=obj.gCO2_passengerkm;
             property.environment.usephaseemissions   =   obj.vehicle.Productionemissions.CO2/sum(obj.vehicle.LCAemissions.CO2);
             property.environment.productionemissions=1-property.environment.usephaseemissions;

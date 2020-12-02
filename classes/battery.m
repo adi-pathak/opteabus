@@ -67,7 +67,7 @@ classdef battery
                 maxwidth= bodywidth-2*wheelhousingwidth;
                 maxheight=floorheight-sectionheight-groundclearance-5;
                 maxvolume=maxlength/1000*maxwidth/1000*maxheight/1000 *1000;
-                obj.maxcapacity=maxvolume*obj.volumetricenergydensity/1000;
+                obj.maxcapacity=obj.maxcapacity+maxvolume*obj.volumetricenergydensity/1000;
             
             end
                 

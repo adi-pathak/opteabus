@@ -224,9 +224,9 @@ classdef vehicleconcept
                 flag=-1;
                 disp('legroom too small')
                 return
-            elseif Vehicle.Interior.seatpitch<650 % aisle width cannot be less than 400
+            elseif Vehicle.Interior.aislewidth<350 % aisle width cannot be less than 400
                 flag=-1;
-                disp('legroom too small')
+                disp('Aisle width too small')
                 return
             else
                 flag=0;
