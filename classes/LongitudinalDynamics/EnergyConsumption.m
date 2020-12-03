@@ -1,7 +1,7 @@
 function [Econs,range,vmax,amax,grade,throughput] = EnergyConsumption( Vehicle, driving_cycle,occupancy )
 whichSim='E';
 v_max_sim = 100;    %maximum simulated velocity in km/h. When vehicle reaches this velocity, the simulation ends.
-t_sim = 100;        %simulated time in s. Simulation ends after this time.
+t_sim = 250;        %simulated time in s. Simulation ends after this time.
 visualize_ECS = 0;
 
 %% Environment

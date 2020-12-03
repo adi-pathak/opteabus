@@ -5,7 +5,7 @@ classdef AEVtoolkit
     %%
     properties
         GUI;
-        slope=[-0.3556 -0.0667 -0.1333 0.1333 -0.0889 -4 0 0; % Service Performance - Waitingtime, dwellingtime, seatstandingratio, seatavailablity, occupancy, missedboardings
+        slope=[-0.4556 -0.0667 0.18 0.1333 -0.0889 -4 0 0; % Service Performance - Waitingtime, dwellingtime, seatstandingratio, seatavailablity, occupancy, missedboardings
             4.0000   -0.0444   -0.1333    1.5556   -4.0000    1.6444         0         0; % Accessibility - Wheelchairzones, entry height, numdoors, doorwidth, lowfloor, aisle width
             0.2000    0.05   -0.6222    0.4444    0.5000    0.5000    0.015    0.5000; % Comfort - Seatwidth, seatpitch, standing area(P/m2), climate comfort,  ?,visibility, headroom, nvh>>remove
             5 5 5 5 0.5 0 0 0; % Functionality - HMI Devices, Onboard payment system, Luggage Space, Power outlets
@@ -15,7 +15,7 @@ classdef AEVtoolkit
             0.5 0.5 0.5 0 0 0 0 0; % Costs
             0.5 0.5 0.5 0 0 0 0 0; % Environment
             ];
-        inflexion=[12 51.75 28.65 22.75 40 1 0 0; % ervice Performance - Waitingtime, dwellingtime, seatstandingratio, seatavailablity, occupancy, missedboardings
+        inflexion=[8 51.75 40 22.75 40 1 0 0; % ervice Performance - Waitingtime, dwellingtime, seatstandingratio, seatavailablity, occupancy, missedboardings
             0.44 150 38.75 2 2 520 0 0; % Accessibility - Wheelchairzones, entry height, numdoors, doorwidth, lowfloor, aisle width
             390 650   7.6782   19.4828    0.5000    0.5000  1800   0.5000; %  Comfort - Seatwidth, seatpitch, standing area(P/m2), climate comfort,  ?,visibility, headroom, nvh>>remove
             0.2 0.2 0.2 0.2 0.5 0 0 0; % % Functionality - HMI Devices, Onboard payment system, Luggage Space, Power outlets
@@ -46,7 +46,7 @@ classdef AEVtoolkit
             0.5 1 1 0 0 0 0 0; % Environment
             ];
         xname={'Waiting Time in min' 'Mean Dwelling Time in sec' ...
-            'Seating to standing ratio' 'Mean Seat Availability in min' ...
+            'Seating to standing ratio (100 % = All Seats)' 'Mean Seat Availability in min' ...
             'Mean Occupancy in %' 'Missed Boardings' '' ''; % Service Performance
             
             'Wheelchair Zones' 'Entry Height in mm' 'Rated Capacity to Door Ratio'...
@@ -554,14 +554,14 @@ classdef AEVtoolkit
                 property{i,2}=y{i};
                  score(i)=sum(y{i}.*obj.catergorical_weights{i});
             end
-            value=sum(cell2mat(y))/length(cell2mat(y)); %% add weights
-            
+        %    value=sum(cell2mat(y))/length(cell2mat(y)); %% add weights
+            value=sum(score.*[0.42 0.12 0.14 0.08 0.14 0.01 0.06 0.17])*10;
         end
         function result=optimizeConcept(obj,app,OptVar)
             options=nsgaopt();
             options.Name='AEV Optimization'; % options name
             options.numObj=2;                % number of objectives
-            options.popsize=1000;             % population size
+            options.popsize=10;             % population size
             options.maxGen=200;              % maximum generations
             options.numVar=size(OptVar,1);                % number of design variables
             options.numCons=1;               % number of constraints
@@ -589,6 +589,7 @@ classdef AEVtoolkit
         end
         function [fitness,constraints,properties]=objectiveFunction(vehicleparameters,obj,services,depotparameters,drivingcycle,plothandle,tablehandle)
             fitness=[0,0];
+             properties=zeros(1,16);
             try
                 vehicleparameters(12)=0;
                 VC=depot(services,depotparameters,vehicleparameters,drivingcycle,[]);
@@ -629,7 +630,7 @@ classdef AEVtoolkit
                    VC.TCO.total...
                    VC.occupancy...
                    size(VC.timetable,1)];
-               vehicleplot=1;
+               vehicleplot=0;
              if vehicleplot==1
                   h2=figure;
                  h=axes;
@@ -661,7 +662,7 @@ classdef AEVtoolkit
                 constraints=010;
                 fitness(1)=4;
                 fitness(2)=2;
-                 properties=zeros(1,14);
+                
                 vehicleplot=0;
                  if vehicleplot==1 &  ~isempty(VC.vehicle)
                  h2=figure;

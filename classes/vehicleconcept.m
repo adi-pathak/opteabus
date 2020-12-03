@@ -70,7 +70,7 @@ classdef vehicleconcept
             standingspace=vehicle_parameters(9);
             powertraintopology=vehicle_parameters(10);
             totalpower=vehicle_parameters(11);
-            powersplit=vehicle_parameters(12);
+            powersplit=0;%vehicle_parameters(12);
             gearratio=vehicle_parameters(13);
             batterycapacity=vehicle_parameters(14);
             

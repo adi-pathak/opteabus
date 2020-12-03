@@ -23,7 +23,7 @@ classdef depot
         dialogbar
         arcs
         property
-        heuristics=1;
+        heuristics=0;
     end
     
     methods
@@ -81,6 +81,9 @@ classdef depot
                 vehicle.Gradeability= vehicle.Properties.gradeability;
                 if isnan(vehicle.Energyconsumption)
                     return
+                elseif max(driving_cycle(:,2))*3.6>=vehicle.Topspeed
+                    3
+                    disp('vehicle speed cannot follow driving cycle ')
                 end
                 if vehicle.Range<service.routelength*3
                     disp('Range too small')
@@ -97,7 +100,7 @@ classdef depot
                         vehicle.Energyconsumption,depot_parameters.chargingpower);
                     %      [obj.arcs,obj.blocks]=SDVSP_charge(obj,vehicle,obj.timetable,...
                     %         depot_parameters.DH.times/60,depot_parameters.DH.distances/1000,vehicle.Energyconsumption,depot_parameters.chargingpower);
-                    if gap<=10
+                    if gap<=5
                         obj.dailyvehiclekm=sum([obj.blocks{4,:}]);
                         dailykm=([obj.blocks{4,:}]);
                         obj.fleetsize=size(obj.blocks,2)-1;
@@ -786,6 +789,7 @@ classdef depot
             toc
         end
         function [blocks,gap]=SDVSP_depotcharging(obj,vehicle,timetable,DH,DH_dist,Econs,chargingpower)
+            tlim=90;
             gurobi_solver=1;
             pulloutcost=150000;
             chargerpower=chargingpower; % 300 kW
@@ -1015,7 +1019,7 @@ classdef depot
                 model.rhs=[b;beq];
                 model.modelsense='min';
                 params.outputflag=1;
-                params.TimeLimit = 120; % 300 seconds to find optimal
+                params.TimeLimit = tlim; % 300 seconds to find optimal
                 model.lb    = lb;
                 model.ub    = ub;
                 
@@ -2189,7 +2193,7 @@ classdef depot
             property.serviceperformance.waitingtime=mean([obj.lines.meanwaitingtime]);
             
             property.serviceperformance.dwellingtime= mean([obj.lines.meandwellingtime]); % not including stops with zero dwelling time
-            property.serviceperformance.seatingratio=obj.vehicle.Interior.numberseats/obj.vehicle.Interior.passengercapacity;
+            property.serviceperformance.seatingratio=obj.vehicle.Interior.numberseats/obj.vehicle.Interior.passengercapacity*100;
             %property.serviceperformance.traveltime=mean([obj.lines.meaninvehicletime])+mean([obj.lines.meanwaitingtime;]);
             property.serviceperformance.seatavailability=mean(cell2mat({obj.lines.seatavailabilityinmin}'));
             property.serviceperformance.meanoccupancy=obj.occupancy;

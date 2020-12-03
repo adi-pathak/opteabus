@@ -101,6 +101,37 @@ for p = 1 : opt.popsize
         fprintf(fid, '%g\t', pop(p).properties(i));
     end
     fprintf(fid, '\r\n');
+    
+    %% visualise package of pareto
+    vehicleplot=01;
+    if vehicleplot==1 & pop(p).nViol==0
+        vehicle=vehicleconcept(pop(p).var);
+        h2=figure;
+        h=axes;
+        axis([-vehicle.Body.rearoverhang-vehicle.Body.wheelbase vehicle.Body.wheelbase+vehicle.Body.frontoverhang -1500 1500 -150 3000]);
+        set(h,'Units','normalized')
+        set(h,'Position',[0 0 1 1])
+        % 2) make figure fill screen
+        set(h2,'Units','normalized')
+        set(h2,'Position',[0 0 1 1])
+        %axis([-6000 6000 -1500 1500 -150 3000])
+        h.Visible = 'off';
+        vehicle.package(h)
+        frame = getframe(h2);
+        im = frame2im(frame);
+        [imind,cm] = rgb2ind(im,256); %
+        filename=strcat('pareto.gif');
+        % Write to the GIF File
+        n=p; % n==1 if file does not exist
+        if n == 1
+            imwrite(imind,cm,filename,'gif', 'Loopcount',inf);
+        else
+            imwrite(imind,cm,filename,'gif','WriteMode','append');
+        end
+        delete(h)
+        delete(h2)
+    end
+    
 end
 
 fprintf(fid, '\r\n\r\n\r\n');
