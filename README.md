@@ -8,3 +8,7 @@ The code is written in a bottom-up way, from the component level up to the vehic
 In this project a vehicle concept optimization tool is developed for the design of autonomous electric buses. The vehicle concept is optimized along the specified bus routes of a public transport network using a multi-criteria objective function. 
 A multicriteria design optimization is conducted on the properties of . for autonomous electric buses. This model optimizes the vehicle concept based on value properties for the stakeholders. 
 
+A genetic algorithm is used to perform the optimization:
+
+![Alt Text](https://github.com/adi-pathak/opteabus/blob/main/Media/Optimization.gif)
+<img src="https://github.com/adi-pathak/opteabus/blob/main/Media/Optimization.gif" width="40" height="40" />
