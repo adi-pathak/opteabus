@@ -1,7 +1,7 @@
 <
 # copteabus
 
-copteabus is a MATLAB tool for the conceptual design optimization of electric autonomous buses in a public transport network. The tool can be used to analyze the influence of using different vehicle concepts on properties such as range, mass, passenger capacity as well as the service performance, i.e. waiting time, fleet size, etc. in a given set of routes. 
+copteabus is a MATLAB tool for the conceptual design optimization of electric autonomous buses in a public transport network. The tool can be used to analyze the influence of using different vehicle design parameters on properties such as range, mass, passenger capacity as well as the service performance, i.e. waiting time, fleet size, etc. in a given set of routes. 
 
 The code is written in a bottom-up way, from the component level up to the vehicle, route and depot level. A parametric CAD model is developed within MATLAB to size the vehicle concept. 
 
